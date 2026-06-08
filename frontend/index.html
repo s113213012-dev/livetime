@@ -257,6 +257,91 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .card-fade-out{animation:card-out .3s ease forwards}
 @keyframes card-out{to{opacity:0;transform:translateX(30px)}}
 
+/* ══════════════════════════════════════════
+   BOTTOM NAV (mobile only)
+══════════════════════════════════════════ */
+.bottom-nav{display:none}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media(max-width:768px){
+  /* Auth */
+  .auth-card{padding:28px 20px;border-radius:18px;margin:12px}
+  .auth-logo{margin-bottom:20px}
+
+  /* App shell */
+  #app{height:100dvh}
+  .shell{flex-direction:column}
+
+  /* Sidebar → hide on mobile */
+  .sidebar{display:none}
+
+  /* Main content */
+  .main{padding:16px 14px;padding-bottom:80px}
+  .page-title{font-size:18px}
+  .page-sub{font-size:12px;margin-bottom:16px}
+
+  /* Bottom nav */
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;
+    background:var(--bg-2);border-top:1px solid var(--border);
+    padding:6px 0 calc(6px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav-item{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:6px 4px;font-size:10px;font-weight:600;color:var(--txt-3);
+    transition:color .15s;border:none;background:none;
+  }
+  .bottom-nav-item .bn-icon{font-size:20px;line-height:1}
+  .bottom-nav-item.active{color:var(--a1)}
+  .bottom-nav-item:active{opacity:.7}
+
+  /* Filter bar */
+  .filter-bar{flex-direction:column;gap:8px}
+  .filter-bar select,.filter-bar input[type=text]{width:100%;max-width:100%;min-width:0}
+  .action-bar{flex-wrap:wrap}
+  .action-bar .btn{flex:1;justify-content:center}
+  .count-badge{margin-left:0;width:100%;text-align:center}
+
+  /* Timeline */
+  .timeline-wrap{padding-left:30px}
+  .event-dot{left:-24px;width:12px;height:12px}
+  .event-inner{padding:14px 16px}
+  .event-title{font-size:14.5px}
+
+  /* Modals */
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal{max-width:100%;max-height:92dvh;border-radius:20px 20px 0 0;border-bottom:none}
+  .modal-header{padding:20px 18px 0}
+  .modal-body{padding:16px 18px}
+  .modal-footer{padding:12px 18px 20px}
+
+  /* Add event modal grid */
+  #add-modal .modal{max-height:95dvh}
+  #add-modal [style*="grid-template-columns:1fr 1fr 1fr"]{
+    display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px
+  }
+
+  /* Dashboard */
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .charts-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+
+  /* AI Console */
+  .console-wrap{height:calc(100dvh - 200px);min-height:300px}
+  .analyze-btn-row .btn{flex:1;justify-content:center}
+
+  /* Toast */
+  #toast-root{bottom:72px;right:12px;left:12px;align-items:center}
+  .toast{width:100%;text-align:center}
+
+  /* Buttons — larger tap targets */
+  .btn{min-height:40px}
+  .btn-sm{min-height:34px}
+  .auth-submit{padding:15px}
+}
+
 /* ── Print ── */
 @media print{
   body{background:#fff!important;color:#111!important}
@@ -576,6 +661,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     <div class="sidebar-footer"><span class="status-dot"></span><span id="api-status">連接中…</span></div>
   </aside>
 
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" id="bn-timeline" onclick="showView('timeline',this);syncBottomNav('timeline')">
+      <span class="bn-icon">📅</span>時間軸
+    </button>
+    <button class="bottom-nav-item" id="bn-dashboard" onclick="showView('dashboard',this);syncBottomNav('dashboard')">
+      <span class="bn-icon">📊</span>儀表板
+    </button>
+    <button class="bottom-nav-item" id="bn-console" onclick="showView('console',this);syncBottomNav('console')">
+      <span class="bn-icon">🤖</span>AI 助理
+    </button>
+    <button class="bottom-nav-item" onclick="doLogout()" style="color:var(--txt-3)">
+      <span class="bn-icon">🚪</span>登出
+    </button>
+  </nav>
+
   <main class="main">
     <!-- Timeline View -->
     <div id="view-timeline" class="view active">
@@ -760,7 +861,13 @@ function showView(name, btn) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
   $(`view-${name}`).classList.add("active");
   btn.classList.add("active");
+  syncBottomNav(name);
   if (name === "dashboard") loadDashboard();
+}
+function syncBottomNav(name) {
+  document.querySelectorAll(".bottom-nav-item").forEach(b => b.classList.remove("active"));
+  const bn = $(`bn-${name}`);
+  if (bn) bn.classList.add("active");
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
