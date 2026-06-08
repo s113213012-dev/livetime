@@ -205,7 +205,7 @@ UNKNOWN_HELP = """目前支援的指令：
 
 
 class LivetimeAgent:
-    def __init__(self, model: str = "gemini-1.5-flash"):
+    def __init__(self, model: str = "gemini-2.0-flash"):
         genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
         self.model = genai.GenerativeModel(
             model_name=model,
