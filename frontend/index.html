@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Livetime · 時光機</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -870,32 +869,6 @@ function resetFilters(){ $("filter-year").value="";$("filter-cat").value="";$("f
 let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,380); }
 
 // ── PDF Export ────────────────────────────────────────────────────────────────
-// Helper: render a Chart.js chart to a base64 PNG in an off-screen canvas
-function renderChartToImg(type, data, options, w=700, h=320) {
-  return new Promise(resolve => {
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    canvas.style.cssText = "position:fixed;left:-9999px;top:0;visibility:hidden";
-    document.body.appendChild(canvas);
-    const chart = new Chart(canvas, {
-      type, data,
-      options: {
-        ...options,
-        animation: false,
-        responsive: false,
-        devicePixelRatio: 1,
-      }
-    });
-    setTimeout(() => {
-      let img = "";
-      try { img = `<img src="${canvas.toDataURL("image/png")}" style="width:100%;border:1px solid #ddd;border-radius:8px">`; } catch(e){}
-      try { chart.destroy(); } catch(e){}
-      try { document.body.removeChild(canvas); } catch(e){}
-      resolve(img);
-    }, 300);
-  });
-}
-
 async function exportTimelinePDF() {
   try {
     const [events, dashStats] = await Promise.all([
@@ -906,43 +879,6 @@ async function exportTimelinePDF() {
     const now = new Date().toLocaleDateString("zh-TW");
     const TYPE_LABEL={learn:"學習",work:"作品",intern:"實習",job:"工作",life:"生活"};
     const MOM_LABEL={up:"成就感高",calm:"沉澱期",intense:"高壓衝刺"};
-    const MOM_COLOR={up:"rgba(52,227,168,.85)",calm:"rgba(61,167,252,.85)",intense:"rgba(255,180,50,.85)",none:"rgba(120,120,120,.7)"};
-    const ALL_CATS=[{key:"learn",label:"學習"},{key:"work",label:"作品"},{key:"intern",label:"實習"},{key:"job",label:"工作"},{key:"life",label:"生活"}];
-    const CHART_GRID = {color:"rgba(180,180,180,.4)"};
-
-    // ── Render charts off-screen (light theme for PDF) ───────────
-    Chart.defaults.color = "#333";
-    let chartBarImg="", chartDoughnutImg="", chartRadarImg="";
-    if(dashStats){
-      // Bar chart
-      const yearSet=[...new Set(dashStats.monthly_counts.map(r=>r.year))].sort();
-      const BAR_COLORS=["#34e3a8","#3da7fc","#c882ff","#ffb432","#ff6482"];
-      const barDatasets=yearSet.map((yr,i)=>{
-        const data=Array(12).fill(0);
-        dashStats.monthly_counts.filter(r=>r.year===yr).forEach(r=>{data[r.month-1]=r.count;});
-        return{label:String(yr),data,backgroundColor:BAR_COLORS[i%BAR_COLORS.length],borderRadius:3};
-      });
-      chartBarImg = await renderChartToImg("bar",
-        {labels:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],datasets:barDatasets},
-        {plugins:{legend:{labels:{color:"#333",font:{size:11}}}},scales:{x:{ticks:{color:"#555"},grid:CHART_GRID},y:{ticks:{color:"#555",stepSize:1},grid:CHART_GRID,beginAtZero:true}}},
-        700, 280
-      );
-      // Doughnut
-      const momData=dashStats.momentum_dist;
-      chartDoughnutImg = await renderChartToImg("doughnut",
-        {labels:momData.map(r=>MOM_LABEL[r.momentum]||r.momentum),datasets:[{data:momData.map(r=>r.count),backgroundColor:momData.map(r=>MOM_COLOR[r.momentum]||"rgba(120,120,120,.7)"),borderColor:"#fff",borderWidth:2}]},
-        {plugins:{legend:{position:"right",labels:{color:"#333",font:{size:11},boxWidth:12}}}},
-        400, 260
-      );
-      // Radar
-      const catMap=Object.fromEntries(dashStats.category_dist.map(r=>[r.type,r.count]));
-      chartRadarImg = await renderChartToImg("radar",
-        {labels:ALL_CATS.map(c=>c.label),datasets:[{label:"事件數",data:ALL_CATS.map(c=>catMap[c.key]||0),backgroundColor:"rgba(52,227,168,.15)",borderColor:"#34e3a8",borderWidth:2,pointBackgroundColor:"#34e3a8",pointRadius:4}]},
-        {scales:{r:{ticks:{color:"#555",backdropColor:"transparent",stepSize:1},grid:CHART_GRID,pointLabels:{color:"#333",font:{size:12}}}},plugins:{legend:{display:false}}},
-        400, 280
-      );
-    }
-    Chart.defaults.color = "#94a3c0"; // restore dark theme
 
     // ── AI career report ──────────────────────────────────────────
     const careerBox = $("career-report-box");
@@ -965,13 +901,6 @@ async function exportTimelinePDF() {
         <div class="pt-kpi"><div class="pt-kpi-val">${dashStats.total_year}</div><div class="pt-kpi-label">${dashStats.this_year} 年度統計</div></div>
         <div class="pt-kpi"><div class="pt-kpi-val">${dashStats.total_month}</div><div class="pt-kpi-label">${dashStats.this_year}/${String(dashStats.this_month).padStart(2,"0")} 月份統計</div></div>
       </div>`;
-    }
-
-    let chartsHtml = "";
-    if(chartBarImg||chartDoughnutImg||chartRadarImg){
-      chartsHtml = `<div class="pt-section-title">📈 儀表板分析圖表</div>`;
-      if(chartBarImg) chartsHtml += `<div class="pt-chart-full" style="margin-bottom:16px">${chartBarImg}</div>`;
-      if(chartDoughnutImg||chartRadarImg) chartsHtml += `<div class="pt-charts-row">${chartDoughnutImg}${chartRadarImg}</div>`;
     }
 
     let aiHtml = "";
@@ -1001,16 +930,9 @@ async function exportTimelinePDF() {
           <div style="clear:both"></div>
         </div>`;
       }).join("");
-          <div class="pt-date">${escapeHtml(ev.date_label||"")}</div>
-          <div class="pt-title">${escapeHtml(ev.title)}${stars?` <span class="pt-stars">${stars}</span>`:""}</div>
-          <div style="margin:4px 0">${badges}</div>
-          ${desc}${refl}${tags}${link}
-          <div style="clear:both"></div>
-        </div>`;
-      }).join("");
 
     $("print-report-content").textContent = "";
-    $("print-timeline").innerHTML = coverHtml + kpiHtml + chartsHtml + aiHtml + eventsHtml;
+    $("print-timeline").innerHTML = coverHtml + kpiHtml + aiHtml + eventsHtml;
     document.body.dataset.print = "timeline";
     window.print();
     delete document.body.dataset.print;
@@ -1122,34 +1044,18 @@ async function doDeleteEvent() {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-let _dashCharts = {};
-function destroyCharts() {
-  Object.values(_dashCharts).forEach(c=>{ try{c.destroy();}catch(e){} });
-  _dashCharts = {};
-}
-
 async function loadDashboard() {
   const body=$("dashboard-body");
-  destroyCharts();
   body.innerHTML=renderSkeletons(5);
   try {
     const d = await apiFetch("/api/dashboard/stats");
-    const MOM_LABEL={up:"成就感高",calm:"沉澱期",intense:"高壓衝刺",none:"未標記"};
-    const MOM_COLOR={up:"rgba(52,227,168,.85)",calm:"rgba(61,167,252,.85)",intense:"rgba(255,180,50,.85)",none:"rgba(85,96,120,.7)"};
-    const ALL_CATS=[{key:"learn",label:"學習"},{key:"work",label:"作品"},{key:"intern",label:"實習"},{key:"job",label:"工作"},{key:"life",label:"生活"}];
+    const MOM_LABEL={up:"⬆️ 成就感高",calm:"🌊 沉澱期",intense:"⚡ 高壓衝刺"};
+    const CAT_LABEL={learn:"🎓 學習",work:"💼 作品",intern:"🏢 實習",job:"👑 工作",life:"🌿 生活"};
 
-    // Build bar chart data: group monthly_counts by year
-    const yearSet=[...new Set(d.monthly_counts.map(r=>r.year))].sort();
-    const monthLabels=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
-    const BAR_COLORS=["rgba(52,227,168,.8)","rgba(61,167,252,.8)","rgba(200,130,255,.8)","rgba(255,180,50,.8)","rgba(255,100,130,.8)"];
-    const barDatasets=yearSet.map((yr,i)=>{
-      const data=Array(12).fill(0);
-      d.monthly_counts.filter(r=>r.year===yr).forEach(r=>{ data[r.month-1]=r.count; });
-      return{ label:String(yr), data, backgroundColor:BAR_COLORS[i%BAR_COLORS.length], borderRadius:4 };
-    });
+    const momRows = d.momentum_dist.map(r=>`<tr><td>${MOM_LABEL[r.momentum]||r.momentum}</td><td style="text-align:right;font-weight:700;color:var(--a1)">${r.count}</td></tr>`).join("");
+    const catRows = d.category_dist.map(r=>`<tr><td>${CAT_LABEL[r.type]||r.type}</td><td style="text-align:right;font-weight:700;color:var(--a2)">${r.count}</td></tr>`).join("");
 
     body.innerHTML=`
-    <!-- KPI: 3-layer time dimension -->
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-val">${d.total_all}</div>
@@ -1167,68 +1073,28 @@ async function loadDashboard() {
         <div class="kpi-sub">Month Total</div>
       </div>
     </div>
-    <!-- Bar: cross-year/month memory density -->
-    <div class="card" style="margin-top:18px">
-      <div class="section-title">📊 跨年度與月度記憶追蹤</div>
-      <div class="chart-wrap" style="height:220px"><canvas id="chart-bar"></canvas></div>
+    <div class="charts-grid" style="margin-top:18px">
+      <div class="card">
+        <div class="section-title">🎨 情緒動能分佈</div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px">
+          <thead><tr><th style="text-align:left;padding:6px 4px;color:var(--txt-3);font-weight:500">狀態</th><th style="text-align:right;padding:6px 4px;color:var(--txt-3);font-weight:500">筆數</th></tr></thead>
+          <tbody>${momRows||"<tr><td colspan='2' style='color:var(--txt-3);padding:8px 4px'>尚無資料</td></tr>"}</tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="section-title">🗂 分類統計</div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px">
+          <thead><tr><th style="text-align:left;padding:6px 4px;color:var(--txt-3);font-weight:500">分類</th><th style="text-align:right;padding:6px 4px;color:var(--txt-3);font-weight:500">筆數</th></tr></thead>
+          <tbody>${catRows||"<tr><td colspan='2' style='color:var(--txt-3);padding:8px 4px'>尚無資料</td></tr>"}</tbody>
+        </table>
+      </div>
     </div>
-    <!-- Doughnut + Radar -->
-    <div class="charts-grid">
-      <div class="card"><div class="section-title">🎨 生命色彩分析</div><div class="chart-wrap"><canvas id="chart-doughnut"></canvas></div></div>
-      <div class="card"><div class="section-title">🌳 生命技能樹</div><div class="chart-wrap"><canvas id="chart-radar"></canvas></div></div>
-    </div>
-    <!-- Career report -->
     <div class="card" style="margin-top:18px;border:1px solid rgba(52,227,168,.3)">
       <div class="section-title">🔮 終極生涯大趨勢 AI 總分析</div>
       <div style="font-size:13px;color:var(--txt-3);margin-bottom:14px">AI 將分析你所有的人生事件，撰寫心理韌性、核心成就與未來建議報告</div>
       <button class="btn btn-primary" id="career-btn" onclick="runCareerReport()">✨ 生成生涯總體報告</button>
       <div id="career-report-box" style="display:none;margin-top:18px;padding:18px;background:rgba(7,11,21,.6);border:1px solid rgba(52,227,168,.15);border-radius:12px;font-size:13.5px;line-height:1.9;color:var(--txt);white-space:pre-wrap;font-family:monospace"></div>
     </div>`;
-
-    Chart.defaults.color = "#94a3c0";
-
-    // Bar chart
-    _dashCharts.bar = new Chart($("chart-bar"), {
-      type:"bar",
-      data:{ labels:monthLabels, datasets:barDatasets },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ labels:{color:"#94a3c0",boxWidth:12,padding:10} } },
-        scales:{
-          x:{ ticks:{color:"#556078"}, grid:{color:"rgba(85,96,120,.15)"}, stacked:false },
-          y:{ ticks:{color:"#556078",stepSize:1}, grid:{color:"rgba(85,96,120,.2)"}, beginAtZero:true }
-        }
-      }
-    });
-
-    // Doughnut
-    const momData = d.momentum_dist;
-    _dashCharts.doughnut = new Chart($("chart-doughnut"), {
-      type:"doughnut",
-      data:{
-        labels: momData.map(r=>MOM_LABEL[r.momentum]||r.momentum),
-        datasets:[{ data:momData.map(r=>r.count), backgroundColor:momData.map(r=>MOM_COLOR[r.momentum]||"rgba(85,96,120,.7)"), borderColor:"rgba(7,11,21,.8)", borderWidth:2 }]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{position:"right",labels:{color:"#94a3c0",boxWidth:14,padding:10}}, tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed} 筆`}} }
-      }
-    });
-
-    // Radar
-    const catMap = Object.fromEntries(d.category_dist.map(r=>[r.type,r.count]));
-    _dashCharts.radar = new Chart($("chart-radar"), {
-      type:"radar",
-      data:{
-        labels: ALL_CATS.map(c=>c.label),
-        datasets:[{ label:"事件數", data:ALL_CATS.map(c=>catMap[c.key]||0), backgroundColor:"rgba(52,227,168,.12)", borderColor:"rgba(52,227,168,.8)", borderWidth:2, pointBackgroundColor:"rgba(52,227,168,.9)", pointRadius:4 }]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        scales:{ r:{ ticks:{color:"#556078",backdropColor:"transparent",stepSize:1}, grid:{color:"rgba(85,96,120,.3)"}, pointLabels:{color:"#94a3c0",font:{size:12}} } },
-        plugins:{ legend:{display:false} }
-      }
-    });
 
   } catch(e){ body.innerHTML=`<div class="empty">❌ 無法載入：${e.message}</div>`; toast(e.message,"err"); }
 }
