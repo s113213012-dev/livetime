@@ -342,6 +342,33 @@ def backup_events(user: dict = Depends(get_current_user)):
     return data["events"]
 
 
+@app.get("/api/events/full")
+def events_full(user: dict = Depends(get_current_user)):
+    """Return all events with every column (for PDF export)."""
+    conn = get_conn()
+    uid = user["user_id"]
+    rows = conn.execute(
+        """SELECT e.*, et.label AS type_label, m.label AS momentum_label
+           FROM events e
+           LEFT JOIN event_types    et ON et.key = e.type
+           LEFT JOIN momentum_types m  ON m.key  = e.momentum
+           WHERE e.user_id = ? ORDER BY e.date_sort ASC""",
+        (uid,)
+    ).fetchall()
+    result = []
+    for row in rows:
+        ev = dict(row)
+        tag_rows = conn.execute(
+            "SELECT t.name FROM tags t JOIN event_tags et ON et.tag_id=t.id WHERE et.event_id=?",
+            (ev["id"],)
+        ).fetchall()
+        ev["tags"] = [r["name"] for r in tag_rows]
+        ev["has_media"] = bool(ev["has_media"])
+        result.append(ev)
+    conn.close()
+    return result
+
+
 class ImportRequest(BaseModel):
     events: List[Any]
 
