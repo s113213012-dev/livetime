@@ -39,7 +39,7 @@ def _fetch_events(
     if user_id is not None:
         conds.append("e.user_id = ?"); params.append(user_id)
     if year:
-        conds.append("e.date_sort / 100 = ?"); params.append(year)
+        conds.append("e.date_sort / 10000 = ?"); params.append(year)
     if category:
         conds.append("e.type = ?"); params.append(category)
     if momentum:
@@ -53,14 +53,14 @@ def _fetch_events(
     where = ("WHERE " + " AND ".join(conds)) if conds else ""
     total = conn.execute(f"SELECT COUNT(*) FROM events e {where}", params).fetchone()[0]
     rows = conn.execute(
-        f"""SELECT e.id, e.title, e.date_label, e.date_sort, e.year, e.month,
+        f"""SELECT e.id, e.title, e.date_label, e.date_sort,
                    e.type, et.label AS type_label,
                    e.momentum, m.label AS momentum_label, m.color AS momentum_color,
-                   e.description, e.has_media, e.link
+                   e.description, e.reflection, e.importance, e.has_media, e.link
             FROM events e
             LEFT JOIN event_types    et ON et.key=e.type
             LEFT JOIN momentum_types m  ON m.key=e.momentum
-            {where} ORDER BY e.date_sort DESC LIMIT ? OFFSET ?""",
+            {where} ORDER BY e.date_sort ASC LIMIT ? OFFSET ?""",
         params + [limit, offset],
     ).fetchall()
     events = [dict(r) for r in rows]

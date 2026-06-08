@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Livetime · 時光機</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -178,6 +179,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .modal-input-sm{width:100%;padding:8px 12px;border-radius:8px;font-size:13.5px;height:38px}
 .modal-footer{display:flex;gap:8px;padding:16px 24px 24px;flex-wrap:wrap;border-top:1px solid var(--border)}
 .modal-footer-left{display:flex;gap:8px;flex:1}
+.star-row{display:flex;gap:4px;padding:6px 0;cursor:pointer;font-size:20px;line-height:1}
+.star-row span{color:#555;transition:color .15s;user-select:none}
+.star-row span.lit{color:#f5c518}
 .neon-divider{height:1px;background:linear-gradient(90deg,transparent,var(--a1),transparent);margin:4px 0 16px;opacity:.3}
 
 /* ── AI Console ── */
@@ -204,6 +208,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--a2),var(--a1));transition:width .6s cubic-bezier(.22,1,.36,1)}
 .bar-val{width:32px;color:var(--txt-3);font-size:11.5px;font-family:ui-monospace,monospace}
 .sparkline-wrap{overflow-x:auto;padding-bottom:4px}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.chart-wrap{position:relative;height:260px;display:flex;align-items:center;justify-content:center}
+.chart-wrap canvas{max-height:260px}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.kpi-val{font-size:28px;font-weight:700;color:var(--a1);line-height:1.2}
+.kpi-label{font-size:12px;color:var(--txt-3);margin-top:4px}
+.kpi-sub{font-size:11px;color:var(--txt-2);margin-top:2px}
+@media(max-width:700px){.charts-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}}
 
 /* ── AI Loading Overlay ── */
 .ai-loading{position:fixed;inset:0;background:rgba(7,11,21,.92);backdrop-filter:blur(8px);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;opacity:0;pointer-events:none;transition:opacity .3s}
@@ -247,12 +260,36 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 /* ── Print ── */
 @media print{
   body{background:#fff!important;color:#111!important}
-  #auth-page,#app .shell{display:none!important}
-  #print-report{display:block!important;padding:24px;font-family:sans-serif}
-  #print-report h1{color:#111;font-size:20px;margin-bottom:16px}
-  #print-report .report-content{color:#333;line-height:1.8;font-size:14px;white-space:pre-wrap}
+  #auth-page,#app .shell,#toast-root{display:none!important}
+  body[data-print="report"] #print-report{display:block!important;padding:24px;font-family:sans-serif}
+  body[data-print="report"] #print-report h1{color:#111;font-size:20px;margin-bottom:16px}
+  body[data-print="report"] #print-report .report-content{color:#333;line-height:1.8;font-size:14px;white-space:pre-wrap}
+  body[data-print="timeline"] #print-timeline{display:block!important;padding:24px 32px;font-family:"Helvetica Neue",Arial,sans-serif;max-width:860px;margin:0 auto}
+  #print-timeline .pt-cover{text-align:center;padding:32px 0 24px;border-bottom:2px solid #222;margin-bottom:28px}
+  #print-timeline .pt-cover h1{font-size:26px;font-weight:800;color:#111;margin-bottom:6px}
+  #print-timeline .pt-cover .pt-meta{font-size:13px;color:#666}
+  #print-timeline .pt-section-title{font-size:16px;font-weight:700;color:#111;margin:28px 0 14px;padding-bottom:6px;border-bottom:1px solid #ddd}
+  #print-timeline .pt-kpi-row{display:flex;gap:16px;margin-bottom:20px}
+  #print-timeline .pt-kpi{flex:1;border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}
+  #print-timeline .pt-kpi-val{font-size:22px;font-weight:700;color:#222}
+  #print-timeline .pt-kpi-label{font-size:11px;color:#888;margin-top:3px}
+  #print-timeline .pt-charts-row{display:flex;gap:16px;margin-bottom:20px;page-break-inside:avoid}
+  #print-timeline .pt-charts-row img{flex:1;max-width:48%;border:1px solid #eee;border-radius:8px}
+  #print-timeline .pt-chart-full img{width:100%;border:1px solid #eee;border-radius:8px;margin-bottom:16px}
+  #print-timeline .pt-ai-report{background:#f8f8f8;border:1px solid #ddd;border-radius:8px;padding:16px;font-size:12px;line-height:1.8;color:#333;white-space:pre-wrap;page-break-inside:avoid}
+  #print-timeline .pt-event{border-left:3px solid #444;padding:10px 16px;margin-bottom:18px;page-break-inside:avoid}
+  #print-timeline .pt-date{font-size:11px;color:#888;margin-bottom:3px}
+  #print-timeline .pt-title{font-size:15px;font-weight:bold;color:#111;margin-bottom:5px}
+  #print-timeline .pt-badge{display:inline-block;font-size:10px;padding:1px 7px;border:1px solid #bbb;border-radius:4px;color:#555;margin-right:4px;margin-bottom:4px}
+  #print-timeline .pt-stars{color:#c89400;font-size:12px;margin-left:4px}
+  #print-timeline .pt-field-label{font-size:10px;font-weight:600;color:#999;text-transform:uppercase;margin-top:8px;margin-bottom:2px}
+  #print-timeline .pt-desc{font-size:12px;color:#333;line-height:1.6}
+  #print-timeline .pt-reflection{font-size:12px;color:#555;font-style:italic;line-height:1.6}
+  #print-timeline .pt-tags{font-size:11px;color:#666;margin-top:6px}
+  #print-timeline .pt-link{font-size:11px;color:#0066cc;margin-top:4px}
+  #print-timeline img.pt-img{max-width:220px;max-height:160px;object-fit:cover;border-radius:6px;float:right;margin:0 0 8px 12px;border:1px solid #ddd}
 }
-#print-report{display:none}
+#print-report,#print-timeline{display:none}
 </style>
 </head>
 <body>
@@ -332,6 +369,87 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
   </div>
 </div>
 
+<!-- Add Event Modal -->
+<div id="add-modal" class="modal-overlay" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-title">✚ 新增人生事件</div>
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="modal-label">標題 *</div>
+        <input id="add-title" class="modal-input-sm" type="text" placeholder="例：完成第一個 React 專案">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
+        <div>
+          <div class="modal-label">日期 *</div>
+          <input id="add-date" class="modal-input-sm" type="date">
+        </div>
+        <div>
+          <div class="modal-label">分類</div>
+          <select id="add-type" class="modal-input-sm" style="width:100%">
+            <option value="learn">🎓 學習</option><option value="work">💼 作品</option>
+            <option value="intern">🏢 實習</option><option value="job">👑 工作</option>
+            <option value="life">🌿 生活</option>
+          </select>
+        </div>
+        <div>
+          <div class="modal-label">重要程度</div>
+          <div id="add-stars" class="star-row" data-val="0">
+            <span onclick="setStars('add',1)">☆</span><span onclick="setStars('add',2)">☆</span>
+            <span onclick="setStars('add',3)">☆</span><span onclick="setStars('add',4)">☆</span>
+            <span onclick="setStars('add',5)">☆</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">情緒動能</div>
+        <select id="add-momentum" class="modal-input-sm" style="width:100%">
+          <option value="">— 無 —</option>
+          <option value="up">⬆️ 成就感高</option>
+          <option value="calm">🌊 沉澱期</option>
+          <option value="intense">⚡ 高壓衝刺</option>
+        </select>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">詳細描述</div>
+        <textarea id="add-desc" class="modal-input" placeholder="這件事的經過、做了什麼…"></textarea>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">個人心得</div>
+        <textarea id="add-reflection" class="modal-input" placeholder="學到了什麼？有什麼感受與反思…"></textarea>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">技能標籤（逗號分隔）</div>
+        <input id="add-tags" class="modal-input-sm" type="text" placeholder="Python, Figma, 簡報設計">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div>
+          <div class="modal-label">相關連結</div>
+          <input id="add-link" class="modal-input-sm" type="text" placeholder="https://github.com/...">
+        </div>
+        <div>
+          <div class="modal-label">上傳圖片（選填）</div>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer;width:100%;text-align:center;box-sizing:border-box">
+            📷 選擇圖片
+            <input type="file" id="add-image-file" accept="image/*" style="display:none" onchange="previewAddImage(event)">
+          </label>
+        </div>
+      </div>
+      <div id="add-image-preview" style="display:none;margin-bottom:12px"><img id="add-img-thumb" style="max-height:140px;border-radius:8px;border:1px solid var(--border)"><button class="btn btn-ghost btn-sm" style="margin-left:8px;vertical-align:top" onclick="clearAddImage()">✕ 移除</button></div>
+      <div id="add-ai-suggestion" style="display:none;margin-top:4px;padding:12px 14px;background:rgba(0,255,170,.06);border:1px solid rgba(0,255,170,.2);border-radius:10px;font-size:13px;color:var(--t2);line-height:1.7"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost btn-sm" onclick="runAiAssist()" id="add-ai-btn">🤖 AI 輔助分析</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="closeAddModal()">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="submitAddEvent()">✚ 新增事件</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Detail Modal -->
 <div id="detail-modal" class="modal-overlay" onclick="handleModalOverlayClick(event)">
   <div class="modal">
@@ -341,11 +459,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     </div>
     <div class="modal-body">
       <div id="modal-meta" class="modal-meta"></div>
+      <div id="modal-importance-view" style="margin-bottom:10px"></div>
       <div class="neon-divider"></div>
       <div id="modal-view-mode">
+        <div id="modal-image-section" class="modal-section" style="display:none">
+          <img id="modal-image" style="max-width:100%;border-radius:10px;border:1px solid var(--border)">
+        </div>
         <div class="modal-section">
           <div class="modal-label">詳細描述</div>
           <div id="modal-desc" class="modal-text"></div>
+        </div>
+        <div id="modal-reflection-section" class="modal-section" style="display:none">
+          <div class="modal-label">個人心得</div>
+          <div id="modal-reflection" class="modal-text" style="color:var(--a1);font-style:italic"></div>
         </div>
         <div class="modal-section">
           <div class="modal-label">技能標籤</div>
@@ -361,7 +487,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
           <div class="modal-label">標題</div>
           <input id="edit-title" class="modal-input-sm" type="text">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
+          <div>
+            <div class="modal-label">日期</div>
+            <input id="edit-date" class="modal-input-sm" type="date">
+          </div>
           <div>
             <div class="modal-label">分類</div>
             <select id="edit-type" class="modal-input-sm" style="width:100%">
@@ -371,18 +501,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
             </select>
           </div>
           <div>
-            <div class="modal-label">情緒動能</div>
-            <select id="edit-momentum" class="modal-input-sm" style="width:100%">
-              <option value="">— 無 —</option>
-              <option value="up">⬆️ 成就感高</option>
-              <option value="calm">🌊 沉澱期</option>
-              <option value="intense">⚡ 高壓衝刺</option>
-            </select>
+            <div class="modal-label">重要程度</div>
+            <div id="edit-stars" class="star-row" data-val="0">
+              <span onclick="setStars('edit',1)">☆</span><span onclick="setStars('edit',2)">☆</span>
+              <span onclick="setStars('edit',3)">☆</span><span onclick="setStars('edit',4)">☆</span>
+              <span onclick="setStars('edit',5)">☆</span>
+            </div>
           </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">情緒動能</div>
+          <select id="edit-momentum" class="modal-input-sm" style="width:100%">
+            <option value="">— 無 —</option>
+            <option value="up">⬆️ 成就感高</option>
+            <option value="calm">🌊 沉澱期</option>
+            <option value="intense">⚡ 高壓衝刺</option>
+          </select>
         </div>
         <div class="modal-section">
           <div class="modal-label">詳細描述</div>
           <textarea id="edit-desc" class="modal-input"></textarea>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">個人心得</div>
+          <textarea id="edit-reflection" class="modal-input"></textarea>
         </div>
         <div class="modal-section">
           <div class="modal-label">技能標籤（逗號分隔）</div>
@@ -391,6 +533,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         <div class="modal-section">
           <div class="modal-label">相關連結</div>
           <input id="edit-link" class="modal-input-sm" type="text" placeholder="github.com/...">
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">更換圖片（選填）</div>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+            📷 選擇圖片
+            <input type="file" id="edit-image-file" accept="image/*" style="display:none" onchange="previewEditImage(event)">
+          </label>
+          <div id="edit-image-preview" style="display:none;margin-top:8px"><img id="edit-img-thumb" style="max-height:120px;border-radius:8px;border:1px solid var(--border)"><button class="btn btn-ghost btn-sm" style="margin-left:8px;vertical-align:top" onclick="clearEditImage()">✕ 移除</button></div>
         </div>
       </div>
     </div>
@@ -410,6 +560,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
   <h1>⏳ Livetime · AI 分析報告</h1>
   <div id="print-report-content" class="report-content"></div>
 </div>
+<div id="print-timeline"></div>
 
 <div id="toast-root"></div>
 
@@ -459,11 +610,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         <span class="count-badge" id="event-count"></span>
       </div>
       <div class="action-bar">
-        <button class="btn btn-ghost" onclick="backupTimeline()">⬇️ 備份時光軸</button>
-        <label class="btn btn-ghost" style="cursor:pointer">
-          ⬆️ 匯入備份
-          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importTimeline(event)">
-        </label>
+        <button class="btn btn-primary" onclick="openAddModal()">✚ 新增事件</button>
+        <button class="btn btn-ghost" onclick="exportTimelinePDF()">📄 匯出 PDF</button>
       </div>
       <div id="timeline-body"></div>
     </div>
@@ -497,7 +645,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 </div><!-- #app -->
 
 <script>
-const API = (localStorage.getItem("livetime_api") || "http://127.0.0.1:8080").replace(/\/$/, "");
+const API = (localStorage.getItem("livetime_api") || (location.hostname === "127.0.0.1" || location.hostname === "localhost" ? "http://127.0.0.1:8080" : location.origin)).replace(/\/$/, "");
 const $ = id => document.getElementById(id);
 
 // ── Auth state ────────────────────────────────────────────────────────────────
@@ -624,7 +772,7 @@ function showView(name, btn) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
   $(`view-${name}`).classList.add("active");
   btn.classList.add("active");
-  if (name === "dashboard" && !$("dashboard-body").dataset.loaded) loadDashboard();
+  if (name === "dashboard") loadDashboard();
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
@@ -633,12 +781,48 @@ const MOMENTUM_EMOJI = { up:"⬆️",calm:"🌊",intense:"⚡" };
 const MOMENTUM_COLOR = { up:"rgba(52,227,168,.18)",calm:"rgba(90,209,255,.18)",intense:"rgba(255,200,97,.18)" };
 const MOMENTUM_TEXT  = { up:"#34e3a8",calm:"#5ad1ff",intense:"#ffc861" };
 
+function renderStars(n) {
+  if (!n) return "";
+  return Array.from({length:5},(_,i)=>`<span style="color:${i<n?"#f5c518":"#444"}">${i<n?"★":"☆"}</span>`).join("");
+}
+function setStars(prefix, val) {
+  const row = $(`${prefix}-stars`);
+  row.dataset.val = val;
+  const spans = row.querySelectorAll("span");
+  spans.forEach((s,i)=>{ s.textContent = i<val?"★":"☆"; s.classList.toggle("lit",i<val); });
+}
+function previewAddImage(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    $("add-img-thumb").src = ev.target.result;
+    $("add-image-preview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+function clearAddImage() {
+  $("add-image-file").value=""; $("add-img-thumb").src=""; $("add-image-preview").style.display="none";
+}
+function previewEditImage(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    $("edit-img-thumb").src = ev.target.result;
+    $("edit-image-preview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+function clearEditImage() {
+  $("edit-image-file").value=""; $("edit-img-thumb").src=""; $("edit-image-preview").style.display="none";
+}
 function renderEvent(ev) {
   const tb = TYPE_COLOR[ev.type] || "var(--a2)";
   const me = MOMENTUM_EMOJI[ev.momentum] || "";
   const mb = MOMENTUM_COLOR[ev.momentum] || "var(--bg-3)";
   const mt = MOMENTUM_TEXT[ev.momentum]  || "var(--txt-2)";
   const tags = (ev.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+  const stars = ev.importance ? `<span style="font-size:13px;letter-spacing:1px;margin-left:4px">${renderStars(ev.importance)}</span>` : "";
+  const thumb = ev.has_media && ev.image_data ? `<img src="${ev.image_data}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">` : "";
   return `<div class="event-card" data-id="${ev.id}">
     <div class="event-dot"></div>
     <div class="event-inner" onclick="openModal('${ev.id}')">
@@ -646,7 +830,9 @@ function renderEvent(ev) {
         <span class="event-date">${ev.date_label}</span>
         <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
         ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
+        ${stars}
       </div>
+      ${thumb}
       <div class="event-title">${escapeHtml(ev.title)}</div>
       <div class="event-desc">${escapeHtml(ev.description||"")}</div>
       ${tags?`<div class="tag-row">${tags}</div>`:""}
@@ -683,28 +869,152 @@ function applyFilters(){ loadTimeline($("filter-year").value||null,$("filter-cat
 function resetFilters(){ $("filter-year").value="";$("filter-cat").value="";$("filter-search").value=""; loadTimeline(null,null,null); }
 let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,380); }
 
-// ── Backup / Import ───────────────────────────────────────────────────────────
-async function backupTimeline() {
-  try {
-    const events = await apiFetch("/api/backup");
-    const blob = new Blob([JSON.stringify(events,null,2)],{type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href=url; a.download="livetime_backup.json"; a.click();
-    URL.revokeObjectURL(url);
-    toast(`已備份 ${events.length} 筆事件`);
-  } catch(e){ toast(e.message,"err"); }
+// ── PDF Export ────────────────────────────────────────────────────────────────
+// Helper: render a Chart.js chart to a base64 PNG in an off-screen canvas
+function renderChartToImg(type, data, options, w=700, h=320) {
+  return new Promise(resolve => {
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.style.cssText = "position:fixed;left:-9999px;top:0;visibility:hidden";
+    document.body.appendChild(canvas);
+    const chart = new Chart(canvas, {
+      type, data,
+      options: {
+        ...options,
+        animation: false,
+        responsive: false,
+        devicePixelRatio: 1,
+      }
+    });
+    setTimeout(() => {
+      let img = "";
+      try { img = `<img src="${canvas.toDataURL("image/png")}" style="width:100%;border:1px solid #ddd;border-radius:8px">`; } catch(e){}
+      try { chart.destroy(); } catch(e){}
+      try { document.body.removeChild(canvas); } catch(e){}
+      resolve(img);
+    }, 300);
+  });
 }
-async function importTimeline(event) {
-  const file = event.target.files[0]; if(!file)return;
+
+async function exportTimelinePDF() {
   try {
-    const text = await file.text();
-    const events = JSON.parse(text);
-    if(!Array.isArray(events)) throw new Error("格式錯誤：JSON 必須是陣列");
-    const result = await apiFetch("/api/import",{method:"POST",body:JSON.stringify({events})});
-    toast(`成功匯入 ${result.imported} 筆事件`);
-    loadTimeline(null,null,null);
-  } catch(e){ toast(`匯入失敗：${e.message}`,"err"); }
-  event.target.value="";
+    const [events, dashStats] = await Promise.all([
+      apiFetch("/api/events-full"),
+      apiFetch("/api/dashboard/stats").catch(()=>null),
+    ]);
+    const username = getUsername() || "我";
+    const now = new Date().toLocaleDateString("zh-TW");
+    const TYPE_LABEL={learn:"學習",work:"作品",intern:"實習",job:"工作",life:"生活"};
+    const MOM_LABEL={up:"成就感高",calm:"沉澱期",intense:"高壓衝刺"};
+    const MOM_COLOR={up:"rgba(52,227,168,.85)",calm:"rgba(61,167,252,.85)",intense:"rgba(255,180,50,.85)",none:"rgba(120,120,120,.7)"};
+    const ALL_CATS=[{key:"learn",label:"學習"},{key:"work",label:"作品"},{key:"intern",label:"實習"},{key:"job",label:"工作"},{key:"life",label:"生活"}];
+    const CHART_GRID = {color:"rgba(180,180,180,.4)"};
+
+    // ── Render charts off-screen (light theme for PDF) ───────────
+    Chart.defaults.color = "#333";
+    let chartBarImg="", chartDoughnutImg="", chartRadarImg="";
+    if(dashStats){
+      // Bar chart
+      const yearSet=[...new Set(dashStats.monthly_counts.map(r=>r.year))].sort();
+      const BAR_COLORS=["#34e3a8","#3da7fc","#c882ff","#ffb432","#ff6482"];
+      const barDatasets=yearSet.map((yr,i)=>{
+        const data=Array(12).fill(0);
+        dashStats.monthly_counts.filter(r=>r.year===yr).forEach(r=>{data[r.month-1]=r.count;});
+        return{label:String(yr),data,backgroundColor:BAR_COLORS[i%BAR_COLORS.length],borderRadius:3};
+      });
+      chartBarImg = await renderChartToImg("bar",
+        {labels:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],datasets:barDatasets},
+        {plugins:{legend:{labels:{color:"#333",font:{size:11}}}},scales:{x:{ticks:{color:"#555"},grid:CHART_GRID},y:{ticks:{color:"#555",stepSize:1},grid:CHART_GRID,beginAtZero:true}}},
+        700, 280
+      );
+      // Doughnut
+      const momData=dashStats.momentum_dist;
+      chartDoughnutImg = await renderChartToImg("doughnut",
+        {labels:momData.map(r=>MOM_LABEL[r.momentum]||r.momentum),datasets:[{data:momData.map(r=>r.count),backgroundColor:momData.map(r=>MOM_COLOR[r.momentum]||"rgba(120,120,120,.7)"),borderColor:"#fff",borderWidth:2}]},
+        {plugins:{legend:{position:"right",labels:{color:"#333",font:{size:11},boxWidth:12}}}},
+        400, 260
+      );
+      // Radar
+      const catMap=Object.fromEntries(dashStats.category_dist.map(r=>[r.type,r.count]));
+      chartRadarImg = await renderChartToImg("radar",
+        {labels:ALL_CATS.map(c=>c.label),datasets:[{label:"事件數",data:ALL_CATS.map(c=>catMap[c.key]||0),backgroundColor:"rgba(52,227,168,.15)",borderColor:"#34e3a8",borderWidth:2,pointBackgroundColor:"#34e3a8",pointRadius:4}]},
+        {scales:{r:{ticks:{color:"#555",backdropColor:"transparent",stepSize:1},grid:CHART_GRID,pointLabels:{color:"#333",font:{size:12}}}},plugins:{legend:{display:false}}},
+        400, 280
+      );
+    }
+    Chart.defaults.color = "#94a3c0"; // restore dark theme
+
+    // ── AI career report ──────────────────────────────────────────
+    const careerBox = $("career-report-box");
+    let careerText = (careerBox && careerBox.textContent.trim()) ? careerBox.textContent.trim() : null;
+    if(!careerText){
+      try { const cr=await apiFetch("/api/career-report",{method:"POST"}); careerText=cr.report||null; } catch(e){}
+    }
+
+    // ── Build HTML sections ───────────────────────────────────────
+    const coverHtml = `<div class="pt-cover">
+      <h1>⏳ ${escapeHtml(username)} 的人生時光軸</h1>
+      <div class="pt-meta">共 ${events.length} 筆事件 · 匯出時間：${now}</div>
+    </div>`;
+
+    let kpiHtml = "";
+    if(dashStats){
+      kpiHtml = `<div class="pt-section-title">📊 關鍵時間維度數據</div>
+      <div class="pt-kpi-row">
+        <div class="pt-kpi"><div class="pt-kpi-val">${dashStats.total_all}</div><div class="pt-kpi-label">歷史累計事件</div></div>
+        <div class="pt-kpi"><div class="pt-kpi-val">${dashStats.total_year}</div><div class="pt-kpi-label">${dashStats.this_year} 年度統計</div></div>
+        <div class="pt-kpi"><div class="pt-kpi-val">${dashStats.total_month}</div><div class="pt-kpi-label">${dashStats.this_year}/${String(dashStats.this_month).padStart(2,"0")} 月份統計</div></div>
+      </div>`;
+    }
+
+    let chartsHtml = "";
+    if(chartBarImg||chartDoughnutImg||chartRadarImg){
+      chartsHtml = `<div class="pt-section-title">📈 儀表板分析圖表</div>`;
+      if(chartBarImg) chartsHtml += `<div class="pt-chart-full" style="margin-bottom:16px">${chartBarImg}</div>`;
+      if(chartDoughnutImg||chartRadarImg) chartsHtml += `<div class="pt-charts-row">${chartDoughnutImg}${chartRadarImg}</div>`;
+    }
+
+    let aiHtml = "";
+    if(careerText){
+      aiHtml = `<div class="pt-section-title">🔮 AI 生涯總體分析報告</div>
+      <div class="pt-ai-report">${escapeHtml(careerText)}</div>`;
+    }
+
+    // Events — full detail
+    const eventsHtml = `<div class="pt-section-title">📅 完整人生事件記錄（${events.length} 筆）</div>` +
+      events.map((ev,idx)=>{
+        const stars = ev.importance ? "★".repeat(ev.importance)+"☆".repeat(5-ev.importance) : "";
+        const typeLabel = ev.type_label||TYPE_LABEL[ev.type]||ev.type||"";
+        const momLabel  = ev.momentum_label||MOM_LABEL[ev.momentum]||"";
+        const badges = [typeLabel, momLabel].filter(Boolean).map(b=>`<span class="pt-badge">${b}</span>`).join(" ");
+        const img   = ev.image_data ? `<img class="pt-img" src="${ev.image_data}">` : "";
+        const desc  = ev.description ? `<div class="pt-field-label">📝 描述</div><div class="pt-desc">${escapeHtml(ev.description)}</div>` : "";
+        const refl  = ev.reflection  ? `<div class="pt-field-label">💬 個人心得</div><div class="pt-reflection">${escapeHtml(ev.reflection)}</div>` : "";
+        const tags  = (ev.tags||[]).length ? `<div class="pt-field-label">🏷 技能標籤</div><div class="pt-tags">${ev.tags.map(t=>escapeHtml(t)).join("　·　")}</div>` : "";
+        const link  = ev.link ? `<div class="pt-field-label">🔗 相關連結</div><div class="pt-link"><a href="${escapeHtml(ev.link)}">${escapeHtml(ev.link)}</a></div>` : "";
+        return `<div class="pt-event">
+          ${img}
+          <div class="pt-date">${escapeHtml(ev.date_label||"")} &nbsp;·&nbsp; 事件 #${idx+1}</div>
+          <div class="pt-title">${escapeHtml(ev.title)}${stars?` <span class="pt-stars">${stars}</span>`:""}</div>
+          <div style="margin:5px 0 8px">${badges}</div>
+          ${desc}${refl}${tags}${link}
+          <div style="clear:both"></div>
+        </div>`;
+      }).join("");
+          <div class="pt-date">${escapeHtml(ev.date_label||"")}</div>
+          <div class="pt-title">${escapeHtml(ev.title)}${stars?` <span class="pt-stars">${stars}</span>`:""}</div>
+          <div style="margin:4px 0">${badges}</div>
+          ${desc}${refl}${tags}${link}
+          <div style="clear:both"></div>
+        </div>`;
+      }).join("");
+
+    $("print-report-content").textContent = "";
+    $("print-timeline").innerHTML = coverHtml + kpiHtml + chartsHtml + aiHtml + eventsHtml;
+    document.body.dataset.print = "timeline";
+    window.print();
+    delete document.body.dataset.print;
+  } catch(e){ toast("匯出失敗："+e.message,"err"); }
 }
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
@@ -730,7 +1040,12 @@ function renderModal(ev) {
     <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
     ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
   `;
+  $("modal-importance-view").innerHTML = ev.importance ? `<span style="font-size:16px;letter-spacing:2px">${renderStars(ev.importance)}</span>` : "";
+  if(ev.image_data){ $("modal-image-section").style.display=""; $("modal-image").src=ev.image_data; }
+  else { $("modal-image-section").style.display="none"; }
   $("modal-desc").textContent = ev.description || "（暫無描述）";
+  if(ev.reflection){ $("modal-reflection-section").style.display=""; $("modal-reflection").textContent=ev.reflection; }
+  else { $("modal-reflection-section").style.display="none"; }
   $("modal-tags").innerHTML = (ev.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("") || `<span style="color:var(--txt-3);font-size:12px">無標籤</span>`;
   if(ev.link){ $("modal-link-section").style.display=""; $("modal-link").href=ev.link.startsWith("http")?ev.link:`https://${ev.link}`; $("modal-link").textContent=ev.link; }
   else{ $("modal-link-section").style.display="none"; }
@@ -745,7 +1060,16 @@ function toggleEditMode() {
   const ev=_currentEventData;
   $("edit-title").value=ev.title||""; $("edit-type").value=ev.type||"learn";
   $("edit-momentum").value=ev.momentum||""; $("edit-desc").value=ev.description||"";
+  $("edit-reflection").value=ev.reflection||"";
   $("edit-tags").value=(ev.tags||[]).join(", "); $("edit-link").value=ev.link||"";
+  // date: convert YYYYMMDD to YYYY-MM-DD
+  if(ev.date_sort && ev.date_sort>=10000000){
+    const ds=String(ev.date_sort);
+    $("edit-date").value=`${ds.slice(0,4)}-${ds.slice(4,6)}-${ds.slice(6,8)}`;
+  } else { $("edit-date").value=""; }
+  setStars("edit", ev.importance||0);
+  if(ev.image_data){ $("edit-img-thumb").src=ev.image_data; $("edit-image-preview").style.display="block"; }
+  else { clearEditImage(); }
   $("modal-view-mode").style.display="none"; $("modal-edit-mode").style.display="";
   $("modal-edit-btn").style.display="none"; $("modal-save-btn").style.display=""; $("modal-cancel-btn").style.display="";
 }
@@ -755,7 +1079,24 @@ function cancelEdit() {
 }
 async function saveEvent() {
   const tags=$("edit-tags").value.split(",").map(s=>s.trim()).filter(Boolean);
-  const payload={title:$("edit-title").value.trim(),type:$("edit-type").value,momentum:$("edit-momentum").value||null,description:$("edit-desc").value.trim(),link:$("edit-link").value.trim()||null,tags};
+  const importance = parseInt($("edit-stars").dataset.val)||null;
+  const dateVal = $("edit-date").value;
+  let date_sort=null, date_label=null;
+  if(dateVal){
+    const [y,m,d]=dateVal.split("-");
+    date_sort=parseInt(y)*10000+parseInt(m)*100+parseInt(d);
+    const mn=["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+    date_label=`${y} 年 ${mn[parseInt(m)]} ${parseInt(d)} 日`;
+  }
+  const editImg = $("edit-img-thumb").src;
+  const image_data = (editImg && editImg.startsWith("data:")) ? editImg : (_currentEventData.image_data||null);
+  const payload={
+    title:$("edit-title").value.trim(), type:$("edit-type").value,
+    momentum:$("edit-momentum").value||null, description:$("edit-desc").value.trim()||null,
+    reflection:$("edit-reflection").value.trim()||null,
+    link:$("edit-link").value.trim()||null, tags, importance,
+    image_data, ...(date_sort?{date_sort,date_label}:{})
+  };
   try {
     const updated=await apiFetch(`/api/events/${_currentEventId}`,{method:"PUT",body:JSON.stringify(payload)});
     _currentEventData=updated; renderModal(updated); toast("已儲存變更");
@@ -781,49 +1122,141 @@ async function doDeleteEvent() {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+let _dashCharts = {};
+function destroyCharts() {
+  Object.values(_dashCharts).forEach(c=>{ try{c.destroy();}catch(e){} });
+  _dashCharts = {};
+}
+
 async function loadDashboard() {
-  const body=$("dashboard-body"); body.innerHTML=renderSkeletons(3);
+  const body=$("dashboard-body");
+  destroyCharts();
+  body.innerHTML=renderSkeletons(5);
   try {
-    const[s,sk,sr]=await Promise.all([apiFetch("/api/stats"),apiFetch("/api/skills"),apiFetch("/api/mood-series")]);
-    const top=s.by_category[0]||{};
-    const moodMax=sr.length?Math.max(...sr.map(x=>x.mood)):0;
+    const d = await apiFetch("/api/dashboard/stats");
+    const MOM_LABEL={up:"成就感高",calm:"沉澱期",intense:"高壓衝刺",none:"未標記"};
+    const MOM_COLOR={up:"rgba(52,227,168,.85)",calm:"rgba(61,167,252,.85)",intense:"rgba(255,180,50,.85)",none:"rgba(85,96,120,.7)"};
+    const ALL_CATS=[{key:"learn",label:"學習"},{key:"work",label:"作品"},{key:"intern",label:"實習"},{key:"job",label:"工作"},{key:"life",label:"生活"}];
+
+    // Build bar chart data: group monthly_counts by year
+    const yearSet=[...new Set(d.monthly_counts.map(r=>r.year))].sort();
+    const monthLabels=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+    const BAR_COLORS=["rgba(52,227,168,.8)","rgba(61,167,252,.8)","rgba(200,130,255,.8)","rgba(255,180,50,.8)","rgba(255,100,130,.8)"];
+    const barDatasets=yearSet.map((yr,i)=>{
+      const data=Array(12).fill(0);
+      d.monthly_counts.filter(r=>r.year===yr).forEach(r=>{ data[r.month-1]=r.count; });
+      return{ label:String(yr), data, backgroundColor:BAR_COLORS[i%BAR_COLORS.length], borderRadius:4 };
+    });
+
     body.innerHTML=`
-    <div class="stats-grid">
-      ${[["事件總數",s.total_events,"筆"],["最活躍分類",top.label||"-",""],["情緒高點",moodMax,"/100"],["技能種類",sk.length,"項"]]
-        .map(([k,v,u])=>`<div class="card stat-card"><div class="stat-val">${v}</div><div class="stat-label">${k}${u?`<span style="font-size:10px;color:var(--txt-3)"> ${u}</span>`:""}</div></div>`).join("")}
+    <!-- KPI: 3-layer time dimension -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-val">${d.total_all}</div>
+        <div class="kpi-label">歷史累計事件</div>
+        <div class="kpi-sub">All-Time Total</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val">${d.total_year}</div>
+        <div class="kpi-label">${d.this_year} 年度統計</div>
+        <div class="kpi-sub">Year Total</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val">${d.total_month}</div>
+        <div class="kpi-label">${d.this_year}/${String(d.this_month).padStart(2,"0")} 月份統計</div>
+        <div class="kpi-sub">Month Total</div>
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-      <div class="card"><div class="section-title">技能雷達</div><div class="bar-chart">
-        ${sk.map(x=>`<div class="bar-row"><span class="bar-label">${escapeHtml(x.name)}</span><span class="bar-track"><span class="bar-fill" style="width:${x.value}%"></span></span><span class="bar-val">${x.value}</span></div>`).join("")}
-      </div></div>
-      <div class="card"><div class="section-title">分類分布</div><div class="bar-chart">
-        ${s.by_category.map(c=>`<div class="bar-row"><span class="bar-label">${escapeHtml(c.label)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.round(c.count/s.total_events*100)}%;background:${TYPE_COLOR[c.type]||"var(--a1)"}"></span></span><span class="bar-val">${c.count}</span></div>`).join("")}
-      </div></div>
+    <!-- Bar: cross-year/month memory density -->
+    <div class="card" style="margin-top:18px">
+      <div class="section-title">📊 跨年度與月度記憶追蹤</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chart-bar"></canvas></div>
     </div>
-    <div class="card" style="margin-top:18px"><div class="section-title">情緒 &amp; 動能曲線</div>${renderSparkline(sr)}</div>`;
-    body.dataset.loaded="1";
+    <!-- Doughnut + Radar -->
+    <div class="charts-grid">
+      <div class="card"><div class="section-title">🎨 生命色彩分析</div><div class="chart-wrap"><canvas id="chart-doughnut"></canvas></div></div>
+      <div class="card"><div class="section-title">🌳 生命技能樹</div><div class="chart-wrap"><canvas id="chart-radar"></canvas></div></div>
+    </div>
+    <!-- Career report -->
+    <div class="card" style="margin-top:18px;border:1px solid rgba(52,227,168,.3)">
+      <div class="section-title">🔮 終極生涯大趨勢 AI 總分析</div>
+      <div style="font-size:13px;color:var(--txt-3);margin-bottom:14px">AI 將分析你所有的人生事件，撰寫心理韌性、核心成就與未來建議報告</div>
+      <button class="btn btn-primary" id="career-btn" onclick="runCareerReport()">✨ 生成生涯總體報告</button>
+      <div id="career-report-box" style="display:none;margin-top:18px;padding:18px;background:rgba(7,11,21,.6);border:1px solid rgba(52,227,168,.15);border-radius:12px;font-size:13.5px;line-height:1.9;color:var(--txt);white-space:pre-wrap;font-family:monospace"></div>
+    </div>`;
+
+    Chart.defaults.color = "#94a3c0";
+
+    // Bar chart
+    _dashCharts.bar = new Chart($("chart-bar"), {
+      type:"bar",
+      data:{ labels:monthLabels, datasets:barDatasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{color:"#94a3c0",boxWidth:12,padding:10} } },
+        scales:{
+          x:{ ticks:{color:"#556078"}, grid:{color:"rgba(85,96,120,.15)"}, stacked:false },
+          y:{ ticks:{color:"#556078",stepSize:1}, grid:{color:"rgba(85,96,120,.2)"}, beginAtZero:true }
+        }
+      }
+    });
+
+    // Doughnut
+    const momData = d.momentum_dist;
+    _dashCharts.doughnut = new Chart($("chart-doughnut"), {
+      type:"doughnut",
+      data:{
+        labels: momData.map(r=>MOM_LABEL[r.momentum]||r.momentum),
+        datasets:[{ data:momData.map(r=>r.count), backgroundColor:momData.map(r=>MOM_COLOR[r.momentum]||"rgba(85,96,120,.7)"), borderColor:"rgba(7,11,21,.8)", borderWidth:2 }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{position:"right",labels:{color:"#94a3c0",boxWidth:14,padding:10}}, tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed} 筆`}} }
+      }
+    });
+
+    // Radar
+    const catMap = Object.fromEntries(d.category_dist.map(r=>[r.type,r.count]));
+    _dashCharts.radar = new Chart($("chart-radar"), {
+      type:"radar",
+      data:{
+        labels: ALL_CATS.map(c=>c.label),
+        datasets:[{ label:"事件數", data:ALL_CATS.map(c=>catMap[c.key]||0), backgroundColor:"rgba(52,227,168,.12)", borderColor:"rgba(52,227,168,.8)", borderWidth:2, pointBackgroundColor:"rgba(52,227,168,.9)", pointRadius:4 }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        scales:{ r:{ ticks:{color:"#556078",backdropColor:"transparent",stepSize:1}, grid:{color:"rgba(85,96,120,.3)"}, pointLabels:{color:"#94a3c0",font:{size:12}} } },
+        plugins:{ legend:{display:false} }
+      }
+    });
+
   } catch(e){ body.innerHTML=`<div class="empty">❌ 無法載入：${e.message}</div>`; toast(e.message,"err"); }
 }
 
-function renderSparkline(series) {
-  if(!series.length)return"";
-  const W=700,H=90,P=24;
-  const xS=(W-P*2)/(series.length-1);
-  const yS=v=>H-P-(v/100)*(H-P*2);
-  const poly=(vals,color)=>`<polyline points="${vals.map((v,i)=>`${P+i*xS},${yS(v)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
-  const dots=(vals,color)=>vals.map((v,i)=>`<circle cx="${P+i*xS}" cy="${yS(v)}" r="3" fill="${color}"/>`).join("");
-  const labels=series.filter((_,i)=>i%2===0||i===series.length-1).map((_,ii)=>{
-    const i=Math.min(ii*2,series.length-1);
-    return`<text x="${P+i*xS}" y="${H-4}" text-anchor="middle" fill="var(--txt-3)" style="font-size:9px">${series[i].month}</text>`;
-  }).join("");
-  return`<div class="sparkline-wrap"><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px">
-    ${poly(series.map(s=>s.mood),"var(--a1)")}${dots(series.map(s=>s.mood),"var(--a1)")}
-    ${poly(series.map(s=>s.prod),"var(--a2)")}${dots(series.map(s=>s.prod),"var(--a2)")}
-    ${labels}</svg>
-    <div style="display:flex;gap:16px;font-size:12px;color:var(--txt-3);margin-top:4px">
-      <span><span style="width:12px;height:2px;background:var(--a1);display:inline-block"></span> 情緒</span>
-      <span><span style="width:12px;height:2px;background:var(--a2);display:inline-block"></span> 動能</span>
-    </div></div>`;
+async function runCareerReport() {
+  const btn=$("career-btn"); const box=$("career-report-box");
+  if(!btn||!box) return;
+  btn.disabled=true; btn.textContent="🔮 AI 分析中，請稍候…";
+  box.style.display="block"; box.textContent="";
+  try {
+    const data = await apiFetch("/api/career-report",{method:"POST"});
+    const text = data.report||"";
+    // Typewriter effect
+    let i=0;
+    const tick=()=>{
+      if(i<text.length){
+        box.textContent+=text[i++];
+        box.scrollTop=box.scrollHeight;
+        setTimeout(tick, i<50?8:i<200?5:3);
+      } else {
+        btn.disabled=false; btn.textContent="✨ 重新生成";
+      }
+    };
+    tick();
+  } catch(e){
+    box.textContent="❌ 生成失敗："+e.message;
+    btn.disabled=false; btn.textContent="✨ 生成生涯總體報告";
+  }
 }
 
 // ── AI Console ────────────────────────────────────────────────────────────────
@@ -844,7 +1277,13 @@ async function runAnalyze() {
   } catch(e){ showAiLoading(false); appendMsg("ai",`❌ ${escapeHtml(e.message)}`); }
 }
 
-function exportReportPDF(reportText){ $("print-report-content").textContent=reportText; window.print(); }
+function exportReportPDF(reportText){
+  $("print-report-content").textContent=reportText;
+  $("print-timeline").innerHTML="";
+  document.body.dataset.print="report";
+  window.print();
+  delete document.body.dataset.print;
+}
 
 function appendMsg(role,html) {
   const log=$("console-log"); const div=document.createElement("div");
@@ -895,8 +1334,94 @@ if (getToken()) {
   showAuthPage();
 }
 
-document.addEventListener("keydown", e => { if(e.key==="Escape") closeModal(); });
+document.addEventListener("keydown", e => {
+  if(e.key==="Escape"){ closeModal(); closeAddModal(); }
+});
 window.setApiUrl = url => { localStorage.setItem("livetime_api",url); location.reload(); };
+
+// ── Add Event ─────────────────────────────────────────────────────────────────
+function openAddModal() {
+  $("add-title").value = "";
+  $("add-date").value = new Date().toISOString().slice(0,10);
+  $("add-type").value = "learn";
+  $("add-momentum").value = "";
+  $("add-desc").value = "";
+  $("add-reflection").value = "";
+  $("add-tags").value = "";
+  $("add-link").value = "";
+  setStars("add", 0);
+  clearAddImage();
+  $("add-ai-suggestion").style.display = "none";
+  $("add-modal").classList.add("open");
+  document.body.style.overflow = "hidden";
+  setTimeout(()=>$("add-title").focus(), 100);
+}
+
+function closeAddModal() {
+  $("add-modal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+async function runAiAssist() {
+  const title = $("add-title").value.trim();
+  if(!title){ toast("請先輸入事件標題","warn"); return; }
+  const btn = $("add-ai-btn");
+  btn.disabled = true; btn.textContent = "🤖 AI 分析中…";
+  try {
+    const res = await apiFetch("/api/ai-assist", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ title, description: $("add-desc").value.trim() })
+    });
+    if(res.type) $("add-type").value = res.type;
+    if(res.momentum) $("add-momentum").value = res.momentum;
+    if(res.tags && res.tags.length) $("add-tags").value = res.tags.join(", ");
+    if(res.description && !$("add-desc").value.trim()) $("add-desc").value = res.description;
+    const box = $("add-ai-suggestion");
+    box.style.display = "block";
+    box.innerHTML = `<strong>🤖 AI 分析結果</strong><br>` +
+      (res.description ? `<span style="opacity:.8">摘要：${res.description}</span><br>` : "") +
+      (res.suggestion ? `<span style="color:var(--a1)">💡 ${res.suggestion}</span>` : "");
+  } catch(e) {
+    toast("AI 分析失敗，請稍後再試","error");
+  } finally {
+    btn.disabled = false; btn.textContent = "🤖 AI 輔助分析";
+  }
+}
+
+async function submitAddEvent() {
+  const title = $("add-title").value.trim();
+  const dateVal = $("add-date").value;
+  if(!title){ toast("請輸入事件標題","warn"); return; }
+  if(!dateVal){ toast("請選擇日期","warn"); return; }
+  const [y,m,d] = dateVal.split("-");
+  const date_sort = parseInt(y)*10000 + parseInt(m)*100 + parseInt(d);
+  const mn = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const date_label = `${y} 年 ${mn[parseInt(m)]} ${parseInt(d)} 日`;
+  const tags = $("add-tags").value.split(",").map(t=>t.trim()).filter(Boolean);
+  const importance = parseInt($("add-stars").dataset.val)||null;
+  const imgSrc = $("add-img-thumb").src;
+  const image_data = (imgSrc && imgSrc.startsWith("data:")) ? imgSrc : null;
+  try {
+    await apiFetch("/api/events", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        title, date_label, date_sort,
+        type: $("add-type").value,
+        momentum: $("add-momentum").value || null,
+        description: $("add-desc").value.trim() || null,
+        reflection: $("add-reflection").value.trim() || null,
+        link: $("add-link").value.trim() || null,
+        importance, image_data, tags,
+      })
+    });
+    closeAddModal();
+    toast("事件已新增！");
+    loadTimeline();
+  } catch(e) {
+    toast("新增失敗："+e.message,"warn");
+  }
+}
 </script>
 </body>
 </html>
