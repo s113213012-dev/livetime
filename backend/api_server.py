@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import sys
 
-# Load GEMINI_API_KEY from .env if not already set in the environment
+# Load ANTHROPIC_API_KEY from .env if not already set in the environment
 _env_file = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(_env_file):
     with open(_env_file) as _f:
@@ -171,10 +171,10 @@ class ChatRequest(BaseModel):
 
 
 def _check_api_key():
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
         raise HTTPException(
             status_code=503,
-            detail="GEMINI_API_KEY not set — AI features unavailable",
+            detail="ANTHROPIC_API_KEY not set — AI features unavailable",
         )
 
 
