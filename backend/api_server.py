@@ -74,10 +74,10 @@ def startup():
     from seed import SCHEMA_PATH
     conn = get_conn()
     conn.execute("PRAGMA foreign_keys=OFF")
-    # Run schema (CREATE TABLE IF NOT EXISTS — safe to re-run)
+    # Run schema (safe to re-run — all CREATE TABLE IF NOT EXISTS)
     conn.executescript(SCHEMA_PATH.read_text())
     conn.execute("PRAGMA foreign_keys=OFF")
-    # Create users table
+    # Users table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,13 +86,11 @@ def startup():
             created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
-    # Seed lookup tables (safe — INSERT OR IGNORE)
+    # Seed lookup tables
     conn.executemany(
         "INSERT OR IGNORE INTO event_types(key, label, icon, color) VALUES(?,?,?,?)",
-        [("learn","學習","learn","var(--t-learn)"),
-         ("work","作品","work","var(--t-work)"),
-         ("intern","實習","intern","var(--t-intern)"),
-         ("job","工作","job","var(--t-job)"),
+        [("learn","學習","learn","var(--t-learn)"),("work","作品","work","var(--t-work)"),
+         ("intern","實習","intern","var(--t-intern)"),("job","工作","job","var(--t-job)"),
          ("life","生活","life","var(--t-life)")],
     )
     conn.executemany(
@@ -362,33 +360,6 @@ def delete_event(event_id: str, user: dict = Depends(get_current_user)):
 def backup_events(user: dict = Depends(get_current_user)):
     data = _fetch_events(limit=200, user_id=user["user_id"])
     return data["events"]
-
-
-@app.get("/api/events-full")
-def events_full(user: dict = Depends(get_current_user)):
-    """Return all events with every column (for PDF export)."""
-    conn = get_conn()
-    uid = user["user_id"]
-    rows = conn.execute(
-        """SELECT e.*, et.label AS type_label, m.label AS momentum_label
-           FROM events e
-           LEFT JOIN event_types    et ON et.key = e.type
-           LEFT JOIN momentum_types m  ON m.key  = e.momentum
-           WHERE e.user_id = ? ORDER BY e.date_sort ASC""",
-        (uid,)
-    ).fetchall()
-    result = []
-    for row in rows:
-        ev = dict(row)
-        tag_rows = conn.execute(
-            "SELECT t.name FROM tags t JOIN event_tags et ON et.tag_id=t.id WHERE et.event_id=?",
-            (ev["id"],)
-        ).fetchall()
-        ev["tags"] = [r["name"] for r in tag_rows]
-        ev["has_media"] = bool(ev["has_media"])
-        result.append(ev)
-    conn.close()
-    return result
 
 
 class ImportRequest(BaseModel):
