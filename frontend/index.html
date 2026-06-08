@@ -870,48 +870,87 @@ function resetFilters(){ $("filter-year").value="";$("filter-cat").value="";$("f
 let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,380); }
 
 // ── PDF Export ────────────────────────────────────────────────────────────────
+// Helper: render a Chart.js chart to a base64 PNG in an off-screen canvas
+function renderChartToImg(type, data, options, w=700, h=320) {
+  return new Promise(resolve => {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${w}px;height:${h}px`;
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    wrap.appendChild(canvas); document.body.appendChild(wrap);
+    Chart.defaults.color = "#333";
+    const chart = new Chart(canvas, {type, data, options:{...options, animation:{duration:0}, responsive:false}});
+    // Wait one frame for Chart to paint
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        const img = `<img src="${canvas.toDataURL("image/png")}" style="width:100%;border:1px solid #eee;border-radius:8px">`;
+        chart.destroy(); document.body.removeChild(wrap);
+        Chart.defaults.color = "#94a3c0"; // restore
+        resolve(img);
+      });
+    });
+  });
+}
+
 async function exportTimelinePDF() {
   try {
-    // Fetch full event details (includes reflection, image_data, importance)
-    const events = await apiFetch("/api/events-full");
+    const [events, dashStats] = await Promise.all([
+      apiFetch("/api/events-full"),
+      apiFetch("/api/dashboard/stats").catch(()=>null),
+    ]);
     const username = getUsername() || "我";
     const now = new Date().toLocaleDateString("zh-TW");
     const TYPE_LABEL={learn:"學習",work:"作品",intern:"實習",job:"工作",life:"生活"};
     const MOM_LABEL={up:"成就感高",calm:"沉澱期",intense:"高壓衝刺"};
+    const MOM_COLOR={up:"rgba(52,227,168,.85)",calm:"rgba(61,167,252,.85)",intense:"rgba(255,180,50,.85)",none:"rgba(120,120,120,.7)"};
+    const ALL_CATS=[{key:"learn",label:"學習"},{key:"work",label:"作品"},{key:"intern",label:"實習"},{key:"job",label:"工作"},{key:"life",label:"生活"}];
+    const CHART_GRID = {color:"rgba(180,180,180,.4)"};
 
-    // Capture dashboard chart images (if charts exist)
-    function chartImg(id) {
-      try {
-        const c = document.getElementById(id);
-        return c ? `<img src="${c.toDataURL("image/png")}">` : "";
-      } catch(e){ return ""; }
+    // ── Render charts off-screen ──────────────────────────────────
+    let chartBarImg="", chartDoughnutImg="", chartRadarImg="";
+    if(dashStats){
+      // Bar chart
+      const yearSet=[...new Set(dashStats.monthly_counts.map(r=>r.year))].sort();
+      const BAR_COLORS=["#34e3a8","#3da7fc","#c882ff","#ffb432","#ff6482"];
+      const barDatasets=yearSet.map((yr,i)=>{
+        const data=Array(12).fill(0);
+        dashStats.monthly_counts.filter(r=>r.year===yr).forEach(r=>{data[r.month-1]=r.count;});
+        return{label:String(yr),data,backgroundColor:BAR_COLORS[i%BAR_COLORS.length],borderRadius:3};
+      });
+      chartBarImg = await renderChartToImg("bar",
+        {labels:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],datasets:barDatasets},
+        {plugins:{legend:{labels:{color:"#333",font:{size:11}}}},scales:{x:{ticks:{color:"#555"},grid:CHART_GRID},y:{ticks:{color:"#555",stepSize:1},grid:CHART_GRID,beginAtZero:true}}},
+        700, 280
+      );
+      // Doughnut
+      const momData=dashStats.momentum_dist;
+      chartDoughnutImg = await renderChartToImg("doughnut",
+        {labels:momData.map(r=>MOM_LABEL[r.momentum]||r.momentum),datasets:[{data:momData.map(r=>r.count),backgroundColor:momData.map(r=>MOM_COLOR[r.momentum]||"rgba(120,120,120,.7)"),borderColor:"#fff",borderWidth:2}]},
+        {plugins:{legend:{position:"right",labels:{color:"#333",font:{size:11},boxWidth:12}}}},
+        400, 260
+      );
+      // Radar
+      const catMap=Object.fromEntries(dashStats.category_dist.map(r=>[r.type,r.count]));
+      chartRadarImg = await renderChartToImg("radar",
+        {labels:ALL_CATS.map(c=>c.label),datasets:[{label:"事件數",data:ALL_CATS.map(c=>catMap[c.key]||0),backgroundColor:"rgba(52,227,168,.15)",borderColor:"#34e3a8",borderWidth:2,pointBackgroundColor:"#34e3a8",pointRadius:4}]},
+        {scales:{r:{ticks:{color:"#555",backdropColor:"transparent",stepSize:1},grid:CHART_GRID,pointLabels:{color:"#333",font:{size:12}}}},plugins:{legend:{display:false}}},
+        400, 280
+      );
     }
-    const chartBar      = chartImg("chart-bar");
-    const chartDoughnut = chartImg("chart-doughnut");
-    const chartRadar    = chartImg("chart-radar");
 
-    // Capture dashboard KPI numbers
-    let dashStats = null;
-    try { dashStats = await apiFetch("/api/dashboard/stats"); } catch(e){}
-
-    // Get AI career report — use existing if available, otherwise auto-generate
+    // ── AI career report ──────────────────────────────────────────
     const careerBox = $("career-report-box");
     let careerText = (careerBox && careerBox.textContent.trim()) ? careerBox.textContent.trim() : null;
     if(!careerText){
-      try {
-        const cr = await apiFetch("/api/career-report",{method:"POST"});
-        careerText = cr.report || null;
-      } catch(e){ careerText = null; }
+      try { const cr=await apiFetch("/api/career-report",{method:"POST"}); careerText=cr.report||null; } catch(e){}
     }
 
-    // ── Build sections ────────────────────────────────────────────
-    // Cover
+    // ── Build HTML sections ───────────────────────────────────────
     const coverHtml = `<div class="pt-cover">
       <h1>⏳ ${escapeHtml(username)} 的人生時光軸</h1>
       <div class="pt-meta">共 ${events.length} 筆事件 · 匯出時間：${now}</div>
     </div>`;
 
-    // KPI
     let kpiHtml = "";
     if(dashStats){
       kpiHtml = `<div class="pt-section-title">📊 關鍵時間維度數據</div>
@@ -922,34 +961,40 @@ async function exportTimelinePDF() {
       </div>`;
     }
 
-    // Charts
     let chartsHtml = "";
-    if(chartBar||chartDoughnut||chartRadar){
+    if(chartBarImg||chartDoughnutImg||chartRadarImg){
       chartsHtml = `<div class="pt-section-title">📈 儀表板分析圖表</div>`;
-      if(chartBar) chartsHtml += `<div class="pt-chart-full">${chartBar}</div>`;
-      if(chartDoughnut||chartRadar) chartsHtml += `<div class="pt-charts-row">${chartDoughnut}${chartRadar}</div>`;
+      if(chartBarImg) chartsHtml += `<div class="pt-chart-full" style="margin-bottom:16px">${chartBarImg}</div>`;
+      if(chartDoughnutImg||chartRadarImg) chartsHtml += `<div class="pt-charts-row">${chartDoughnutImg}${chartRadarImg}</div>`;
     }
 
-    // AI career report
     let aiHtml = "";
     if(careerText){
       aiHtml = `<div class="pt-section-title">🔮 AI 生涯總體分析報告</div>
       <div class="pt-ai-report">${escapeHtml(careerText)}</div>`;
     }
 
-    // Events
+    // Events — full detail
     const eventsHtml = `<div class="pt-section-title">📅 完整人生事件記錄（${events.length} 筆）</div>` +
-      events.map(ev=>{
+      events.map((ev,idx)=>{
         const stars = ev.importance ? "★".repeat(ev.importance)+"☆".repeat(5-ev.importance) : "";
-        const badges = [ev.type_label||TYPE_LABEL[ev.type]||ev.type, ev.momentum_label||MOM_LABEL[ev.momentum]||""].filter(Boolean)
-          .map(b=>`<span class="pt-badge">${b}</span>`).join("");
+        const typeLabel = ev.type_label||TYPE_LABEL[ev.type]||ev.type||"";
+        const momLabel  = ev.momentum_label||MOM_LABEL[ev.momentum]||"";
+        const badges = [typeLabel, momLabel].filter(Boolean).map(b=>`<span class="pt-badge">${b}</span>`).join(" ");
         const img   = ev.image_data ? `<img class="pt-img" src="${ev.image_data}">` : "";
-        const desc  = ev.description ? `<div class="pt-field-label">描述</div><div class="pt-desc">${escapeHtml(ev.description)}</div>` : "";
-        const refl  = ev.reflection  ? `<div class="pt-field-label">個人心得</div><div class="pt-reflection">${escapeHtml(ev.reflection)}</div>` : "";
-        const tags  = (ev.tags||[]).length ? `<div class="pt-tags">🏷 ${ev.tags.map(t=>escapeHtml(t)).join(" · ")}</div>` : "";
-        const link  = ev.link ? `<div class="pt-link">🔗 ${escapeHtml(ev.link)}</div>` : "";
+        const desc  = ev.description ? `<div class="pt-field-label">📝 描述</div><div class="pt-desc">${escapeHtml(ev.description)}</div>` : "";
+        const refl  = ev.reflection  ? `<div class="pt-field-label">💬 個人心得</div><div class="pt-reflection">${escapeHtml(ev.reflection)}</div>` : "";
+        const tags  = (ev.tags||[]).length ? `<div class="pt-field-label">🏷 技能標籤</div><div class="pt-tags">${ev.tags.map(t=>escapeHtml(t)).join("　·　")}</div>` : "";
+        const link  = ev.link ? `<div class="pt-field-label">🔗 相關連結</div><div class="pt-link"><a href="${escapeHtml(ev.link)}">${escapeHtml(ev.link)}</a></div>` : "";
         return `<div class="pt-event">
           ${img}
+          <div class="pt-date">${escapeHtml(ev.date_label||"")} &nbsp;·&nbsp; 事件 #${idx+1}</div>
+          <div class="pt-title">${escapeHtml(ev.title)}${stars?` <span class="pt-stars">${stars}</span>`:""}</div>
+          <div style="margin:5px 0 8px">${badges}</div>
+          ${desc}${refl}${tags}${link}
+          <div style="clear:both"></div>
+        </div>`;
+      }).join("");
           <div class="pt-date">${escapeHtml(ev.date_label||"")}</div>
           <div class="pt-title">${escapeHtml(ev.title)}${stars?` <span class="pt-stars">${stars}</span>`:""}</div>
           <div style="margin:4px 0">${badges}</div>
