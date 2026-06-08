@@ -72,7 +72,6 @@ def get_agent(user_id: int) -> LivetimeAgent:
 @app.on_event("startup")
 def startup():
     conn = get_conn()
-    # Users table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,10 +80,17 @@ def startup():
             created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
-    # Add user_id column to events if missing
     cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
-    if "user_id" not in cols:
-        conn.execute("ALTER TABLE events ADD COLUMN user_id INTEGER REFERENCES users(id)")
+    for col, defn in [
+        ("user_id",    "INTEGER REFERENCES users(id)"),
+        ("importance", "INTEGER"),
+        ("reflection", "TEXT"),
+        ("image_data", "TEXT"),
+    ]:
+        if col not in cols:
+            conn.execute(f"ALTER TABLE events ADD COLUMN {col} {defn}")
+    # Migrate old YYYYMM date_sort (6 digits) → YYYYMMDD (8 digits, day=01)
+    conn.execute("UPDATE events SET date_sort = date_sort * 100 + 1 WHERE date_sort < 10000000")
     conn.commit()
     conn.close()
 
@@ -206,7 +212,7 @@ def search(q: str, limit: int = 20, user: dict = Depends(get_current_user)):
            LEFT JOIN event_tags et ON et.event_id=e.id
            LEFT JOIN tags t        ON t.id=et.tag_id
            WHERE e.user_id=? AND (e.title LIKE ? OR e.description LIKE ? OR t.name LIKE ?)
-           ORDER BY e.date_sort DESC LIMIT ?""",
+           ORDER BY e.date_sort ASC LIMIT ?""",
         (user["user_id"], like, like, like, limit),
     ).fetchall()
     conn.close()
@@ -217,11 +223,14 @@ def search(q: str, limit: int = 20, user: dict = Depends(get_current_user)):
 class EventCreate(BaseModel):
     title: str
     date_label: str
-    date_sort: int
+    date_sort: int          # YYYYMMDD e.g. 20260315
     type: str = "learn"
     momentum: Optional[str] = None
     description: Optional[str] = None
+    reflection: Optional[str] = None
     link: Optional[str] = None
+    importance: Optional[int] = None
+    image_data: Optional[str] = None
     tags: Optional[List[str]] = []
 
 
@@ -231,10 +240,13 @@ def create_event(req: EventCreate, user: dict = Depends(get_current_user)):
     eid = f"ev_{uuid.uuid4().hex[:10]}"
     conn.execute(
         """INSERT INTO events
-           (id, title, date_label, date_sort, type, momentum, description, has_media, link, user_id)
-           VALUES(?,?,?,?,?,?,?,0,?,?)""",
+           (id, title, date_label, date_sort, type, momentum, description,
+            reflection, importance, image_data, has_media, link, user_id)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (eid, req.title.strip(), req.date_label, req.date_sort,
          req.type, req.momentum or None, req.description or None,
+         req.reflection or None, req.importance,
+         req.image_data or None, 1 if req.image_data else 0,
          req.link or None, user["user_id"]),
     )
     for tag_name in (req.tags or []):
@@ -257,7 +269,10 @@ class EventUpdate(BaseModel):
     type: Optional[str] = None
     momentum: Optional[str] = None
     description: Optional[str] = None
+    reflection: Optional[str] = None
     link: Optional[str] = None
+    importance: Optional[int] = None
+    image_data: Optional[str] = None
     tags: Optional[List[str]] = None
 
 
@@ -275,11 +290,15 @@ def update_event(event_id: str, req: EventUpdate, user: dict = Depends(get_curre
     fields, params = [], []
     for attr, col in [
         ("title","title"),("date_label","date_label"),("date_sort","date_sort"),
-        ("type","type"),("momentum","momentum"),("description","description"),("link","link"),
+        ("type","type"),("momentum","momentum"),("description","description"),
+        ("reflection","reflection"),("link","link"),("importance","importance"),
+        ("image_data","image_data"),
     ]:
         val = getattr(req, attr)
         if val is not None:
             fields.append(f"{col}=?"); params.append(val)
+    if req.image_data is not None:
+        fields.append("has_media=?"); params.append(1 if req.image_data else 0)
 
     if fields:
         fields.append("updated_at=datetime('now')")

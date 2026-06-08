@@ -178,6 +178,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .modal-input-sm{width:100%;padding:8px 12px;border-radius:8px;font-size:13.5px;height:38px}
 .modal-footer{display:flex;gap:8px;padding:16px 24px 24px;flex-wrap:wrap;border-top:1px solid var(--border)}
 .modal-footer-left{display:flex;gap:8px;flex:1}
+.star-row{display:flex;gap:4px;padding:6px 0;cursor:pointer;font-size:20px;line-height:1}
+.star-row span{color:#555;transition:color .15s;user-select:none}
+.star-row span.lit{color:#f5c518}
 .neon-divider{height:1px;background:linear-gradient(90deg,transparent,var(--a1),transparent);margin:4px 0 16px;opacity:.3}
 
 /* ── AI Console ── */
@@ -334,7 +337,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 
 <!-- Add Event Modal -->
 <div id="add-modal" class="modal-overlay" onclick="if(event.target===this)closeAddModal()">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:580px">
     <div class="modal-header">
       <div class="modal-title">✚ 新增人生事件</div>
       <button class="modal-close" onclick="closeAddModal()">✕</button>
@@ -344,20 +347,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         <div class="modal-label">標題 *</div>
         <input id="add-title" class="modal-input-sm" type="text" placeholder="例：完成第一個 React 專案">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
         <div>
           <div class="modal-label">日期 *</div>
-          <input id="add-date" class="modal-input-sm" type="month" placeholder="YYYY-MM">
+          <input id="add-date" class="modal-input-sm" type="date">
         </div>
         <div>
           <div class="modal-label">分類</div>
           <select id="add-type" class="modal-input-sm" style="width:100%">
-            <option value="learn">🎓 學習</option>
-            <option value="work">💼 作品</option>
-            <option value="intern">🏢 實習</option>
-            <option value="job">👑 工作</option>
+            <option value="learn">🎓 學習</option><option value="work">💼 作品</option>
+            <option value="intern">🏢 實習</option><option value="job">👑 工作</option>
             <option value="life">🌿 生活</option>
           </select>
+        </div>
+        <div>
+          <div class="modal-label">重要程度</div>
+          <div id="add-stars" class="star-row" data-val="0">
+            <span onclick="setStars('add',1)">☆</span><span onclick="setStars('add',2)">☆</span>
+            <span onclick="setStars('add',3)">☆</span><span onclick="setStars('add',4)">☆</span>
+            <span onclick="setStars('add',5)">☆</span>
+          </div>
         </div>
       </div>
       <div class="modal-section">
@@ -371,17 +380,31 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
       </div>
       <div class="modal-section">
         <div class="modal-label">詳細描述</div>
-        <textarea id="add-desc" class="modal-input" placeholder="描述這件事的經過、學到什麼、有什麼感受…"></textarea>
+        <textarea id="add-desc" class="modal-input" placeholder="這件事的經過、做了什麼…"></textarea>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">個人心得</div>
+        <textarea id="add-reflection" class="modal-input" placeholder="學到了什麼？有什麼感受與反思…"></textarea>
       </div>
       <div class="modal-section">
         <div class="modal-label">技能標籤（逗號分隔）</div>
         <input id="add-tags" class="modal-input-sm" type="text" placeholder="Python, Figma, 簡報設計">
       </div>
-      <div class="modal-section">
-        <div class="modal-label">相關連結</div>
-        <input id="add-link" class="modal-input-sm" type="text" placeholder="https://github.com/...">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div>
+          <div class="modal-label">相關連結</div>
+          <input id="add-link" class="modal-input-sm" type="text" placeholder="https://github.com/...">
+        </div>
+        <div>
+          <div class="modal-label">上傳圖片（選填）</div>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer;width:100%;text-align:center;box-sizing:border-box">
+            📷 選擇圖片
+            <input type="file" id="add-image-file" accept="image/*" style="display:none" onchange="previewAddImage(event)">
+          </label>
+        </div>
       </div>
-      <div id="add-ai-suggestion" style="display:none;margin-top:12px;padding:12px 14px;background:rgba(0,255,170,.06);border:1px solid rgba(0,255,170,.2);border-radius:10px;font-size:13px;color:var(--t2);line-height:1.7"></div>
+      <div id="add-image-preview" style="display:none;margin-bottom:12px"><img id="add-img-thumb" style="max-height:140px;border-radius:8px;border:1px solid var(--border)"><button class="btn btn-ghost btn-sm" style="margin-left:8px;vertical-align:top" onclick="clearAddImage()">✕ 移除</button></div>
+      <div id="add-ai-suggestion" style="display:none;margin-top:4px;padding:12px 14px;background:rgba(0,255,170,.06);border:1px solid rgba(0,255,170,.2);border-radius:10px;font-size:13px;color:var(--t2);line-height:1.7"></div>
     </div>
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-ghost btn-sm" onclick="runAiAssist()" id="add-ai-btn">🤖 AI 輔助分析</button>
@@ -402,11 +425,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     </div>
     <div class="modal-body">
       <div id="modal-meta" class="modal-meta"></div>
+      <div id="modal-importance-view" style="margin-bottom:10px"></div>
       <div class="neon-divider"></div>
       <div id="modal-view-mode">
+        <div id="modal-image-section" class="modal-section" style="display:none">
+          <img id="modal-image" style="max-width:100%;border-radius:10px;border:1px solid var(--border)">
+        </div>
         <div class="modal-section">
           <div class="modal-label">詳細描述</div>
           <div id="modal-desc" class="modal-text"></div>
+        </div>
+        <div id="modal-reflection-section" class="modal-section" style="display:none">
+          <div class="modal-label">個人心得</div>
+          <div id="modal-reflection" class="modal-text" style="color:var(--a1);font-style:italic"></div>
         </div>
         <div class="modal-section">
           <div class="modal-label">技能標籤</div>
@@ -422,7 +453,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
           <div class="modal-label">標題</div>
           <input id="edit-title" class="modal-input-sm" type="text">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
+          <div>
+            <div class="modal-label">日期</div>
+            <input id="edit-date" class="modal-input-sm" type="date">
+          </div>
           <div>
             <div class="modal-label">分類</div>
             <select id="edit-type" class="modal-input-sm" style="width:100%">
@@ -432,18 +467,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
             </select>
           </div>
           <div>
-            <div class="modal-label">情緒動能</div>
-            <select id="edit-momentum" class="modal-input-sm" style="width:100%">
-              <option value="">— 無 —</option>
-              <option value="up">⬆️ 成就感高</option>
-              <option value="calm">🌊 沉澱期</option>
-              <option value="intense">⚡ 高壓衝刺</option>
-            </select>
+            <div class="modal-label">重要程度</div>
+            <div id="edit-stars" class="star-row" data-val="0">
+              <span onclick="setStars('edit',1)">☆</span><span onclick="setStars('edit',2)">☆</span>
+              <span onclick="setStars('edit',3)">☆</span><span onclick="setStars('edit',4)">☆</span>
+              <span onclick="setStars('edit',5)">☆</span>
+            </div>
           </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">情緒動能</div>
+          <select id="edit-momentum" class="modal-input-sm" style="width:100%">
+            <option value="">— 無 —</option>
+            <option value="up">⬆️ 成就感高</option>
+            <option value="calm">🌊 沉澱期</option>
+            <option value="intense">⚡ 高壓衝刺</option>
+          </select>
         </div>
         <div class="modal-section">
           <div class="modal-label">詳細描述</div>
           <textarea id="edit-desc" class="modal-input"></textarea>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">個人心得</div>
+          <textarea id="edit-reflection" class="modal-input"></textarea>
         </div>
         <div class="modal-section">
           <div class="modal-label">技能標籤（逗號分隔）</div>
@@ -452,6 +499,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         <div class="modal-section">
           <div class="modal-label">相關連結</div>
           <input id="edit-link" class="modal-input-sm" type="text" placeholder="github.com/...">
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">更換圖片（選填）</div>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+            📷 選擇圖片
+            <input type="file" id="edit-image-file" accept="image/*" style="display:none" onchange="previewEditImage(event)">
+          </label>
+          <div id="edit-image-preview" style="display:none;margin-top:8px"><img id="edit-img-thumb" style="max-height:120px;border-radius:8px;border:1px solid var(--border)"><button class="btn btn-ghost btn-sm" style="margin-left:8px;vertical-align:top" onclick="clearEditImage()">✕ 移除</button></div>
         </div>
       </div>
     </div>
@@ -695,12 +750,48 @@ const MOMENTUM_EMOJI = { up:"⬆️",calm:"🌊",intense:"⚡" };
 const MOMENTUM_COLOR = { up:"rgba(52,227,168,.18)",calm:"rgba(90,209,255,.18)",intense:"rgba(255,200,97,.18)" };
 const MOMENTUM_TEXT  = { up:"#34e3a8",calm:"#5ad1ff",intense:"#ffc861" };
 
+function renderStars(n) {
+  if (!n) return "";
+  return Array.from({length:5},(_,i)=>`<span style="color:${i<n?"#f5c518":"#444"}">${i<n?"★":"☆"}</span>`).join("");
+}
+function setStars(prefix, val) {
+  const row = $(`${prefix}-stars`);
+  row.dataset.val = val;
+  const spans = row.querySelectorAll("span");
+  spans.forEach((s,i)=>{ s.textContent = i<val?"★":"☆"; s.classList.toggle("lit",i<val); });
+}
+function previewAddImage(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    $("add-img-thumb").src = ev.target.result;
+    $("add-image-preview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+function clearAddImage() {
+  $("add-image-file").value=""; $("add-img-thumb").src=""; $("add-image-preview").style.display="none";
+}
+function previewEditImage(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    $("edit-img-thumb").src = ev.target.result;
+    $("edit-image-preview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+function clearEditImage() {
+  $("edit-image-file").value=""; $("edit-img-thumb").src=""; $("edit-image-preview").style.display="none";
+}
 function renderEvent(ev) {
   const tb = TYPE_COLOR[ev.type] || "var(--a2)";
   const me = MOMENTUM_EMOJI[ev.momentum] || "";
   const mb = MOMENTUM_COLOR[ev.momentum] || "var(--bg-3)";
   const mt = MOMENTUM_TEXT[ev.momentum]  || "var(--txt-2)";
   const tags = (ev.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+  const stars = ev.importance ? `<span style="font-size:13px;letter-spacing:1px;margin-left:4px">${renderStars(ev.importance)}</span>` : "";
+  const thumb = ev.has_media && ev.image_data ? `<img src="${ev.image_data}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">` : "";
   return `<div class="event-card" data-id="${ev.id}">
     <div class="event-dot"></div>
     <div class="event-inner" onclick="openModal('${ev.id}')">
@@ -708,7 +799,9 @@ function renderEvent(ev) {
         <span class="event-date">${ev.date_label}</span>
         <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
         ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
+        ${stars}
       </div>
+      ${thumb}
       <div class="event-title">${escapeHtml(ev.title)}</div>
       <div class="event-desc">${escapeHtml(ev.description||"")}</div>
       ${tags?`<div class="tag-row">${tags}</div>`:""}
@@ -792,7 +885,12 @@ function renderModal(ev) {
     <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
     ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
   `;
+  $("modal-importance-view").innerHTML = ev.importance ? `<span style="font-size:16px;letter-spacing:2px">${renderStars(ev.importance)}</span>` : "";
+  if(ev.image_data){ $("modal-image-section").style.display=""; $("modal-image").src=ev.image_data; }
+  else { $("modal-image-section").style.display="none"; }
   $("modal-desc").textContent = ev.description || "（暫無描述）";
+  if(ev.reflection){ $("modal-reflection-section").style.display=""; $("modal-reflection").textContent=ev.reflection; }
+  else { $("modal-reflection-section").style.display="none"; }
   $("modal-tags").innerHTML = (ev.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("") || `<span style="color:var(--txt-3);font-size:12px">無標籤</span>`;
   if(ev.link){ $("modal-link-section").style.display=""; $("modal-link").href=ev.link.startsWith("http")?ev.link:`https://${ev.link}`; $("modal-link").textContent=ev.link; }
   else{ $("modal-link-section").style.display="none"; }
@@ -807,7 +905,16 @@ function toggleEditMode() {
   const ev=_currentEventData;
   $("edit-title").value=ev.title||""; $("edit-type").value=ev.type||"learn";
   $("edit-momentum").value=ev.momentum||""; $("edit-desc").value=ev.description||"";
+  $("edit-reflection").value=ev.reflection||"";
   $("edit-tags").value=(ev.tags||[]).join(", "); $("edit-link").value=ev.link||"";
+  // date: convert YYYYMMDD to YYYY-MM-DD
+  if(ev.date_sort && ev.date_sort>=10000000){
+    const ds=String(ev.date_sort);
+    $("edit-date").value=`${ds.slice(0,4)}-${ds.slice(4,6)}-${ds.slice(6,8)}`;
+  } else { $("edit-date").value=""; }
+  setStars("edit", ev.importance||0);
+  if(ev.image_data){ $("edit-img-thumb").src=ev.image_data; $("edit-image-preview").style.display="block"; }
+  else { clearEditImage(); }
   $("modal-view-mode").style.display="none"; $("modal-edit-mode").style.display="";
   $("modal-edit-btn").style.display="none"; $("modal-save-btn").style.display=""; $("modal-cancel-btn").style.display="";
 }
@@ -817,7 +924,24 @@ function cancelEdit() {
 }
 async function saveEvent() {
   const tags=$("edit-tags").value.split(",").map(s=>s.trim()).filter(Boolean);
-  const payload={title:$("edit-title").value.trim(),type:$("edit-type").value,momentum:$("edit-momentum").value||null,description:$("edit-desc").value.trim(),link:$("edit-link").value.trim()||null,tags};
+  const importance = parseInt($("edit-stars").dataset.val)||null;
+  const dateVal = $("edit-date").value;
+  let date_sort=null, date_label=null;
+  if(dateVal){
+    const [y,m,d]=dateVal.split("-");
+    date_sort=parseInt(y)*10000+parseInt(m)*100+parseInt(d);
+    const mn=["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+    date_label=`${y} 年 ${mn[parseInt(m)]} ${parseInt(d)} 日`;
+  }
+  const editImg = $("edit-img-thumb").src;
+  const image_data = (editImg && editImg.startsWith("data:")) ? editImg : (_currentEventData.image_data||null);
+  const payload={
+    title:$("edit-title").value.trim(), type:$("edit-type").value,
+    momentum:$("edit-momentum").value||null, description:$("edit-desc").value.trim()||null,
+    reflection:$("edit-reflection").value.trim()||null,
+    link:$("edit-link").value.trim()||null, tags, importance,
+    image_data, ...(date_sort?{date_sort,date_label}:{})
+  };
   try {
     const updated=await apiFetch(`/api/events/${_currentEventId}`,{method:"PUT",body:JSON.stringify(payload)});
     _currentEventData=updated; renderModal(updated); toast("已儲存變更");
@@ -965,13 +1089,15 @@ window.setApiUrl = url => { localStorage.setItem("livetime_api",url); location.r
 // ── Add Event ─────────────────────────────────────────────────────────────────
 function openAddModal() {
   $("add-title").value = "";
-  const today = new Date();
-  $("add-date").value = today.toISOString().slice(0,7);
+  $("add-date").value = new Date().toISOString().slice(0,10);
   $("add-type").value = "learn";
   $("add-momentum").value = "";
   $("add-desc").value = "";
+  $("add-reflection").value = "";
   $("add-tags").value = "";
   $("add-link").value = "";
+  setStars("add", 0);
+  clearAddImage();
   $("add-ai-suggestion").style.display = "none";
   $("add-modal").classList.add("open");
   document.body.style.overflow = "hidden";
@@ -1015,24 +1141,25 @@ async function submitAddEvent() {
   const dateVal = $("add-date").value;
   if(!title){ showToast("請輸入事件標題","warn"); return; }
   if(!dateVal){ showToast("請選擇日期","warn"); return; }
-  const [y,m] = dateVal.split("-");
-  const date_sort = parseInt(y)*100 + parseInt(m);
-  const monthNames = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
-  const date_label = `${y} 年 ${monthNames[parseInt(m)]}`;
+  const [y,m,d] = dateVal.split("-");
+  const date_sort = parseInt(y)*10000 + parseInt(m)*100 + parseInt(d);
+  const mn = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const date_label = `${y} 年 ${mn[parseInt(m)]} ${parseInt(d)} 日`;
   const tags = $("add-tags").value.split(",").map(t=>t.trim()).filter(Boolean);
+  const importance = parseInt($("add-stars").dataset.val)||null;
+  const imgSrc = $("add-img-thumb").src;
+  const image_data = (imgSrc && imgSrc.startsWith("data:")) ? imgSrc : null;
   try {
     await apiFetch("/api/events", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
+      method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({
-        title,
-        date_label,
-        date_sort,
+        title, date_label, date_sort,
         type: $("add-type").value,
         momentum: $("add-momentum").value || null,
         description: $("add-desc").value.trim() || null,
+        reflection: $("add-reflection").value.trim() || null,
         link: $("add-link").value.trim() || null,
-        tags,
+        importance, image_data, tags,
       })
     });
     closeAddModal();
