@@ -1364,7 +1364,7 @@ function closeAddModal() {
 
 async function runAiAssist() {
   const title = $("add-title").value.trim();
-  if(!title){ showToast("請先輸入事件標題","warn"); return; }
+  if(!title){ toast("請先輸入事件標題","warn"); return; }
   const btn = $("add-ai-btn");
   btn.disabled = true; btn.textContent = "🤖 AI 分析中…";
   try {
@@ -1383,7 +1383,7 @@ async function runAiAssist() {
       (res.description ? `<span style="opacity:.8">摘要：${res.description}</span><br>` : "") +
       (res.suggestion ? `<span style="color:var(--a1)">💡 ${res.suggestion}</span>` : "");
   } catch(e) {
-    showToast("AI 分析失敗，請稍後再試","error");
+    toast("AI 分析失敗，請稍後再試","error");
   } finally {
     btn.disabled = false; btn.textContent = "🤖 AI 輔助分析";
   }
@@ -1392,8 +1392,8 @@ async function runAiAssist() {
 async function submitAddEvent() {
   const title = $("add-title").value.trim();
   const dateVal = $("add-date").value;
-  if(!title){ showToast("請輸入事件標題","warn"); return; }
-  if(!dateVal){ showToast("請選擇日期","warn"); return; }
+  if(!title){ toast("請輸入事件標題","warn"); return; }
+  if(!dateVal){ toast("請選擇日期","warn"); return; }
   const [y,m,d] = dateVal.split("-");
   const date_sort = parseInt(y)*10000 + parseInt(m)*100 + parseInt(d);
   const mn = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
@@ -1416,10 +1416,10 @@ async function submitAddEvent() {
       })
     });
     closeAddModal();
-    showToast("事件已新增！","success");
+    toast("事件已新增！");
     loadTimeline();
   } catch(e) {
-    showToast("新增失敗："+e.message,"error");
+    toast("新增失敗："+e.message,"warn");
   }
 }
 </script>
