@@ -12,8 +12,9 @@
   --glow:rgba(52,227,168,.45);--txt:#e8f0fe;--txt-2:#94a3c0;--txt-3:#556078;
   --border:rgba(255,255,255,.07);--radius:14px;
   --t-learn:#3da7fc;--t-work:#34e3a8;--t-intern:#c084fc;--t-job:#fbbf24;--t-life:#f472b6;
+  --danger:#f87171;--danger-soft:rgba(248,113,113,.12);
 }
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Noto Sans TC',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Noto Sans TC',sans-serif;min-height:100vh}
 a{color:var(--a1);text-decoration:none}
 button{cursor:pointer;border:none;background:none;color:inherit;font:inherit}
 input,select,textarea{font:inherit;color:inherit;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;outline:none}
@@ -21,7 +22,86 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:4px}
-.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ══════════════════════════════════════════
+   AUTH PAGE
+══════════════════════════════════════════ */
+#auth-page{
+  position:fixed;inset:0;z-index:500;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);overflow:hidden;
+}
+/* Animated grid background */
+#auth-page::before{
+  content:"";position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(52,227,168,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(52,227,168,.04) 1px,transparent 1px);
+  background-size:40px 40px;
+  animation:grid-move 20s linear infinite;
+}
+@keyframes grid-move{0%{background-position:0 0}100%{background-position:40px 40px}}
+/* Floating glow orbs */
+.auth-orb{position:absolute;border-radius:50%;filter:blur(80px);animation:orb-float 8s ease-in-out infinite;pointer-events:none}
+.auth-orb-1{width:400px;height:400px;background:rgba(52,227,168,.07);top:-100px;left:-100px;animation-delay:0s}
+.auth-orb-2{width:300px;height:300px;background:rgba(61,167,252,.08);bottom:-80px;right:-80px;animation-delay:-3s}
+.auth-orb-3{width:200px;height:200px;background:rgba(192,132,252,.06);top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:-6s}
+@keyframes orb-float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(20px,-20px) scale(1.05)}66%{transform:translate(-15px,15px) scale(.97)}}
+
+.auth-card{
+  position:relative;z-index:1;
+  width:100%;max-width:420px;
+  background:rgba(13,20,37,.9);
+  border:1px solid rgba(52,227,168,.2);
+  border-radius:24px;
+  padding:40px 36px;
+  backdrop-filter:blur(20px);
+  box-shadow:0 0 60px rgba(52,227,168,.08),0 30px 80px rgba(0,0,0,.6);
+}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px;justify-content:center}
+.auth-logo-icon{
+  width:48px;height:48px;
+  background:linear-gradient(135deg,var(--a1),var(--a2));
+  border-radius:14px;display:grid;place-items:center;font-size:22px;
+  box-shadow:0 0 20px rgba(52,227,168,.4);
+}
+.auth-logo-text{font-size:22px;font-weight:900;letter-spacing:-.3px}
+.auth-logo-sub{font-size:12px;color:var(--txt-3);margin-top:2px}
+.auth-tabs{display:flex;background:var(--bg-3);border-radius:10px;padding:3px;gap:3px;margin-bottom:28px}
+.auth-tab{
+  flex:1;padding:9px;border-radius:8px;font-size:13.5px;font-weight:600;
+  color:var(--txt-3);transition:all .2s;text-align:center;
+}
+.auth-tab.active{background:linear-gradient(135deg,var(--a1),var(--a2));color:#070b15}
+.auth-form{display:flex;flex-direction:column;gap:14px}
+.auth-field label{display:block;font-size:12px;font-weight:600;color:var(--txt-3);margin-bottom:6px;letter-spacing:.3px}
+.auth-field input{
+  width:100%;padding:11px 14px;border-radius:10px;font-size:14px;
+  background:var(--bg);border:1px solid var(--border);transition:all .15s;
+}
+.auth-field input:focus{border-color:var(--a1);box-shadow:0 0 0 3px var(--a1-soft)}
+.auth-submit{
+  width:100%;padding:13px;border-radius:12px;font-size:15px;font-weight:700;
+  background:linear-gradient(135deg,var(--a1),var(--a2));color:#070b15;
+  transition:all .2s;margin-top:4px;
+  box-shadow:0 4px 20px rgba(52,227,168,.25);
+}
+.auth-submit:hover{filter:brightness(1.08);box-shadow:0 6px 28px rgba(52,227,168,.4);transform:translateY(-1px)}
+.auth-submit:active{transform:translateY(0)}
+.auth-error{
+  background:var(--danger-soft);border:1px solid rgba(248,113,113,.3);
+  color:var(--danger);border-radius:8px;padding:10px 14px;font-size:13px;
+  display:none;
+}
+.auth-error.show{display:block}
+.auth-hint{text-align:center;font-size:12px;color:var(--txt-3);margin-top:16px}
+
+/* ══════════════════════════════════════════
+   MAIN APP
+══════════════════════════════════════════ */
+#app{display:none;flex-direction:column;height:100vh}
+#app.visible{display:flex}
+.shell{display:flex;flex:1;overflow:hidden}
 .sidebar{width:220px;flex-shrink:0;background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0}
 .main{flex:1;overflow-y:auto;padding:28px 36px}
 .logo{display:flex;align-items:center;gap:10px;padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px}
@@ -34,35 +114,73 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .nav-icon{font-size:15px;width:18px;text-align:center}
 .sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);font-size:12px;color:var(--txt-3)}
 .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--a1);margin-right:6px;box-shadow:0 0 6px var(--a1)}
+/* User info in sidebar */
+.user-panel{padding:12px 20px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.user-name{font-size:13px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:6px}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2));display:grid;place-items:center;font-size:12px;font-weight:800;color:#070b15;flex-shrink:0}
+.logout-btn{margin-top:8px;width:100%;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);color:var(--txt-3);text-align:left;display:flex;align-items:center;gap:6px;transition:all .15s}
+.logout-btn:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-soft)}
+
+/* ── Cards & Buttons ── */
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;backdrop-filter:blur(8px)}
 .page-title{font-size:22px;font-weight:800;margin-bottom:4px}
 .page-sub{font-size:13px;color:var(--txt-3);margin-bottom:24px}
-.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
-.filter-bar select,.filter-bar input[type=text]{padding:7px 12px;font-size:13px;border-radius:8px;height:36px}
-.filter-bar select{min-width:120px}
-.filter-bar input[type=text]{flex:1;min-width:160px;max-width:260px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;transition:all .15s;height:36px}
 .btn-primary{background:linear-gradient(135deg,var(--a1),var(--a2));color:#070b15}
 .btn-primary:hover{filter:brightness(1.1);box-shadow:0 0 16px var(--glow)}
 .btn-ghost{border:1px solid var(--border);color:var(--txt-2)}
 .btn-ghost:hover{border-color:var(--a1);color:var(--a1)}
+.btn-danger{border:1px solid rgba(248,113,113,.3);color:var(--danger);background:var(--danger-soft)}
+.btn-danger:hover{border-color:var(--danger);background:rgba(248,113,113,.2)}
+.btn-sm{padding:5px 12px;height:30px;font-size:12px}
+
+/* ── Filter & Action bars ── */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filter-bar select,.filter-bar input[type=text]{padding:7px 12px;font-size:13px;border-radius:8px;height:36px}
+.filter-bar select{min-width:120px}
+.filter-bar input[type=text]{flex:1;min-width:160px;max-width:260px}
+.action-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
+.count-badge{font-size:12px;color:var(--txt-3);margin-left:auto}
+
+/* ── Timeline ── */
 .timeline-wrap{position:relative;padding-left:40px}
 .timeline-axis{position:absolute;left:14px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--a1),var(--a2));border-radius:2px}
 .event-card{position:relative;margin-bottom:20px}
 .event-dot{position:absolute;left:-33px;top:18px;width:14px;height:14px;border-radius:50%;border:2.5px solid var(--a1);background:var(--bg);box-shadow:0 0 10px var(--glow);transition:transform .15s}
 .event-card:hover .event-dot{transform:scale(1.3)}
-.event-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;transition:border-color .15s}
+.event-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;transition:border-color .15s;cursor:pointer}
 .event-card:hover .event-inner{border-color:rgba(52,227,168,.35)}
 .event-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .event-date{font-size:12px;color:var(--txt-3);font-weight:600;letter-spacing:.3px}
 .type-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
 .momentum-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;display:flex;align-items:center;gap:4px}
 .event-title{font-size:15.5px;font-weight:700;line-height:1.4;margin-bottom:6px}
-.event-desc{font-size:13px;color:var(--txt-2);line-height:1.65}
+.event-desc{font-size:13px;color:var(--txt-2);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .tag{font-size:11.5px;padding:3px 9px;border-radius:6px;background:rgba(61,167,252,.12);color:var(--a2);border:1px solid rgba(61,167,252,.2);font-family:ui-monospace,monospace}
-.event-link{margin-top:8px;font-size:12px;color:var(--a1)}
-.event-link::before{content:"🔗 "}
+.detail-hint{font-size:11px;color:var(--txt-3);margin-top:8px;opacity:.7}
+
+/* ── Detail Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(7,11,21,.85);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--bg-2);border:1px solid rgba(52,227,168,.2);border-radius:20px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;box-shadow:0 0 40px rgba(52,227,168,.12),0 20px 60px rgba(0,0,0,.6);transform:translateY(20px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:24px 24px 0;gap:12px}
+.modal-title{font-size:18px;font-weight:800;line-height:1.4;flex:1}
+.modal-close{width:32px;height:32px;border-radius:8px;background:var(--bg-3);display:grid;place-items:center;font-size:16px;flex-shrink:0;transition:all .15s}
+.modal-close:hover{background:var(--a1-soft);color:var(--a1)}
+.modal-body{padding:20px 24px}
+.modal-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.modal-section{margin-bottom:18px}
+.modal-label{font-size:11px;font-weight:700;color:var(--txt-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.modal-text{font-size:13.5px;color:var(--txt-2);line-height:1.7}
+.modal-input{width:100%;padding:9px 12px;border-radius:8px;font-size:13.5px;resize:vertical;min-height:80px;line-height:1.6}
+.modal-input-sm{width:100%;padding:8px 12px;border-radius:8px;font-size:13.5px;height:38px}
+.modal-footer{display:flex;gap:8px;padding:16px 24px 24px;flex-wrap:wrap;border-top:1px solid var(--border)}
+.modal-footer-left{display:flex;gap:8px;flex:1}
+.neon-divider{height:1px;background:linear-gradient(90deg,transparent,var(--a1),transparent);margin:4px 0 16px;opacity:.3}
+
+/* ── AI Console ── */
 .console-wrap{display:flex;flex-direction:column;height:calc(100vh - 56px - 80px);min-height:400px}
 .console-log{flex:1;overflow-y:auto;padding:16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);font-size:13.5px;line-height:1.7;margin-bottom:14px}
 .msg{margin-bottom:16px}
@@ -72,8 +190,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .msg-ai .msg-label{color:var(--a1)}
 .console-input-row{display:flex;gap:10px}
 .console-input{flex:1;padding:10px 14px;border-radius:10px;font-size:13.5px;resize:none;height:44px}
-.loading-dots::after{content:"";animation:dots 1.2s infinite}
-@keyframes dots{0%{content:""}33%{content:"."}66%{content:".."}100%{content:"..."}}
+.analyze-btn-row{display:flex;gap:8px;margin-bottom:12px}
+
+/* ── Dashboard ── */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
 .stat-card{text-align:center;padding:18px 12px}
 .stat-val{font-size:32px;font-weight:800;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -85,35 +204,241 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--a2),var(--a1));transition:width .6s cubic-bezier(.22,1,.36,1)}
 .bar-val{width:32px;color:var(--txt-3);font-size:11.5px;font-family:ui-monospace,monospace}
 .sparkline-wrap{overflow-x:auto;padding-bottom:4px}
+
+/* ── AI Loading Overlay ── */
+.ai-loading{position:fixed;inset:0;background:rgba(7,11,21,.92);backdrop-filter:blur(8px);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;opacity:0;pointer-events:none;transition:opacity .3s}
+.ai-loading.show{opacity:1;pointer-events:auto}
+.neon-ring{position:relative;width:100px;height:100px}
+.neon-ring::before,.neon-ring::after{content:"";position:absolute;inset:0;border-radius:50%}
+.neon-ring::before{border:3px solid transparent;border-top-color:var(--a1);border-right-color:var(--a1);animation:spin 1s linear infinite;box-shadow:0 0 20px var(--a1)}
+.neon-ring::after{border:3px solid transparent;border-bottom-color:var(--a2);border-left-color:var(--a2);animation:spin 1.6s linear infinite reverse;box-shadow:0 0 20px var(--a2);inset:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.neon-ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;animation:pulse-icon 2s ease-in-out infinite}
+@keyframes pulse-icon{0%,100%{opacity:.7;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
+.loading-title{font-size:18px;font-weight:800;background:linear-gradient(90deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.loading-sub{font-size:13px;color:var(--txt-3);letter-spacing:.3px}
+.loading-dots::after{content:"";animation:dots 1.2s infinite}
+@keyframes dots{0%{content:""}33%{content:"."}66%{content:".."}100%{content:"..."}}
+.loading-particles{display:flex;gap:8px;margin-top:8px}
+.particle{width:6px;height:6px;border-radius:50%;animation:particle-bounce 1.2s ease-in-out infinite}
+.particle:nth-child(1){background:var(--a1);animation-delay:0s}
+.particle:nth-child(2){background:var(--a2);animation-delay:.15s}
+.particle:nth-child(3){background:var(--t-intern);animation-delay:.3s}
+.particle:nth-child(4){background:var(--t-job);animation-delay:.45s}
+.particle:nth-child(5){background:var(--t-life);animation-delay:.6s}
+@keyframes particle-bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-12px);opacity:1}}
+
+/* ── Misc ── */
 .skeleton{background:linear-gradient(90deg,var(--bg-3) 25%,var(--bg-2) 50%,var(--bg-3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .sk-card{height:120px;margin-bottom:20px;border-radius:var(--radius)}
 #toast-root{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:999}
 .toast{padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;animation:slide-in .2s ease;border:1px solid var(--border)}
 .toast-ok{background:var(--a1-soft);border-color:rgba(52,227,168,.3);color:var(--a1)}
-.toast-err{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.3);color:#f87171}
+.toast-err{background:var(--danger-soft);border-color:rgba(248,113,113,.3);color:var(--danger)}
 @keyframes slide-in{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
 .section-title{font-size:14px;font-weight:800;color:var(--txt-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
 .empty{text-align:center;padding:60px 0;color:var(--txt-3);font-size:14px}
-.count-badge{font-size:12px;color:var(--txt-3);margin-left:auto}
 .view{display:none}
 .view.active{display:block}
+.card-fade-out{animation:card-out .3s ease forwards}
+@keyframes card-out{to{opacity:0;transform:translateX(30px)}}
+
+/* ── Print ── */
+@media print{
+  body{background:#fff!important;color:#111!important}
+  #auth-page,#app .shell{display:none!important}
+  #print-report{display:block!important;padding:24px;font-family:sans-serif}
+  #print-report h1{color:#111;font-size:20px;margin-bottom:16px}
+  #print-report .report-content{color:#333;line-height:1.8;font-size:14px;white-space:pre-wrap}
+}
+#print-report{display:none}
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════
+     AUTH PAGE
+══════════════════════════════════════════ -->
+<div id="auth-page">
+  <div class="auth-orb auth-orb-1"></div>
+  <div class="auth-orb auth-orb-2"></div>
+  <div class="auth-orb auth-orb-3"></div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⏳</div>
+      <div>
+        <div style="font-size:22px;font-weight:900;letter-spacing:-.3px">Livetime</div>
+        <div style="font-size:12px;color:var(--txt-3);margin-top:2px">你的時光機 · 記錄每一刻成長</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">登入</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">註冊帳號</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- Login Form -->
+    <form id="form-login" class="auth-form" onsubmit="doLogin(event)">
+      <div class="auth-field">
+        <label>使用者名稱</label>
+        <input id="login-username" type="text" placeholder="輸入你的名稱" autocomplete="username" required>
+      </div>
+      <div class="auth-field">
+        <label>密碼</label>
+        <input id="login-password" type="password" placeholder="輸入密碼" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="auth-submit">🚀 進入時光機</button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="form-register" class="auth-form" onsubmit="doRegister(event)" style="display:none">
+      <div class="auth-field">
+        <label>使用者名稱（2 字以上）</label>
+        <input id="reg-username" type="text" placeholder="為自己取個名字" autocomplete="username" required>
+      </div>
+      <div class="auth-field">
+        <label>密碼（至少 6 個字元）</label>
+        <input id="reg-password" type="password" placeholder="設定密碼" autocomplete="new-password" required>
+      </div>
+      <div class="auth-field">
+        <label>確認密碼</label>
+        <input id="reg-password2" type="password" placeholder="再輸入一次密碼" autocomplete="new-password" required>
+      </div>
+      <button type="submit" class="auth-submit">✨ 建立我的時光機</button>
+    </form>
+
+    <div class="auth-hint">你的記憶，只屬於你。</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════ -->
+<div id="app">
+
+<!-- AI Loading Overlay -->
+<div id="ai-loading" class="ai-loading">
+  <div class="neon-ring"><div class="neon-ring-icon">🔮</div></div>
+  <div>
+    <div class="loading-title">AI 正在讀取時光碎片<span class="loading-dots"></span></div>
+    <div class="loading-sub" style="text-align:center;margin-top:4px">深度分析您的成長歷程中</div>
+  </div>
+  <div class="loading-particles">
+    <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detail-modal" class="modal-overlay" onclick="handleModalOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div id="modal-title" class="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-meta" class="modal-meta"></div>
+      <div class="neon-divider"></div>
+      <div id="modal-view-mode">
+        <div class="modal-section">
+          <div class="modal-label">詳細描述</div>
+          <div id="modal-desc" class="modal-text"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">技能標籤</div>
+          <div id="modal-tags" class="tag-row"></div>
+        </div>
+        <div id="modal-link-section" class="modal-section" style="display:none">
+          <div class="modal-label">相關連結</div>
+          <a id="modal-link" style="font-size:13px;color:var(--a1)" target="_blank"></a>
+        </div>
+      </div>
+      <div id="modal-edit-mode" style="display:none">
+        <div class="modal-section">
+          <div class="modal-label">標題</div>
+          <input id="edit-title" class="modal-input-sm" type="text">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+          <div>
+            <div class="modal-label">分類</div>
+            <select id="edit-type" class="modal-input-sm" style="width:100%">
+              <option value="learn">🎓 學習</option><option value="work">💼 作品</option>
+              <option value="intern">🏢 實習</option><option value="job">👑 工作</option>
+              <option value="life">🌿 生活</option>
+            </select>
+          </div>
+          <div>
+            <div class="modal-label">情緒動能</div>
+            <select id="edit-momentum" class="modal-input-sm" style="width:100%">
+              <option value="">— 無 —</option>
+              <option value="up">⬆️ 成就感高</option>
+              <option value="calm">🌊 沉澱期</option>
+              <option value="intense">⚡ 高壓衝刺</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">詳細描述</div>
+          <textarea id="edit-desc" class="modal-input"></textarea>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">技能標籤（逗號分隔）</div>
+          <input id="edit-tags" class="modal-input-sm" type="text" placeholder="Python, Figma, React">
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">相關連結</div>
+          <input id="edit-link" class="modal-input-sm" type="text" placeholder="github.com/...">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-footer-left">
+        <button id="modal-edit-btn" class="btn btn-ghost btn-sm" onclick="toggleEditMode()">✏️ 編輯</button>
+        <button id="modal-save-btn" class="btn btn-primary btn-sm" onclick="saveEvent()" style="display:none">💾 儲存</button>
+        <button id="modal-cancel-btn" class="btn btn-ghost btn-sm" onclick="cancelEdit()" style="display:none">取消</button>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete()">🗑️ 刪除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print Report -->
+<div id="print-report">
+  <h1>⏳ Livetime · AI 分析報告</h1>
+  <div id="print-report-content" class="report-content"></div>
+</div>
+
 <div id="toast-root"></div>
+
 <div class="shell">
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-icon">⏳</div>
       <div><div class="logo-text">Livetime</div><div class="logo-sub">時光機</div></div>
     </div>
+
+    <!-- User Panel -->
+    <div class="user-panel">
+      <div class="user-name">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span id="user-display-name">載入中…</span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">
+        <span>🚪</span> 登出
+      </button>
+    </div>
+
     <button class="nav-item active" onclick="showView('timeline',this)"><span class="nav-icon">📅</span>時間軸</button>
     <button class="nav-item" onclick="showView('dashboard',this)"><span class="nav-icon">📊</span>總覽儀表板</button>
     <button class="nav-item" onclick="showView('console',this)"><span class="nav-icon">🤖</span>AI 助理</button>
     <div class="sidebar-footer"><span class="status-dot"></span><span id="api-status">連接中…</span></div>
   </aside>
+
   <main class="main">
+    <!-- Timeline View -->
     <div id="view-timeline" class="view active">
       <div class="page-title">時間軸</div>
       <div class="page-sub">我的學習、作品與人生記錄</div>
@@ -133,16 +458,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         <button class="btn btn-ghost" onclick="resetFilters()">重置</button>
         <span class="count-badge" id="event-count"></span>
       </div>
+      <div class="action-bar">
+        <button class="btn btn-ghost" onclick="backupTimeline()">⬇️ 備份時光軸</button>
+        <label class="btn btn-ghost" style="cursor:pointer">
+          ⬆️ 匯入備份
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importTimeline(event)">
+        </label>
+      </div>
       <div id="timeline-body"></div>
     </div>
+
+    <!-- Dashboard View -->
     <div id="view-dashboard" class="view">
       <div class="page-title">總覽儀表板</div>
       <div class="page-sub">你的時光軸數據摘要</div>
       <div id="dashboard-body"></div>
     </div>
+
+    <!-- AI Console View -->
     <div id="view-console" class="view">
       <div class="page-title">AI 助理</div>
       <div class="page-sub">輸入 <code>/timeline</code>、<code>/analyze</code>、<code>/export</code> 或直接問我</div>
+      <div class="analyze-btn-row">
+        <button class="btn btn-primary" onclick="runAnalyze()">🔮 一鍵 AI 深度分析</button>
+      </div>
       <div class="console-wrap">
         <div class="console-log" id="console-log"></div>
         <div class="console-input-row">
@@ -155,110 +494,323 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     </div>
   </main>
 </div>
+</div><!-- #app -->
+
 <script>
-const API=(localStorage.getItem("livetime_api")||"http://127.0.0.1:8080").replace(/\/$/,"");
-const $=id=>document.getElementById(id);
-async function apiFetch(path,opts={}){
-  const res=await fetch(API+path,{headers:{"Content-Type":"application/json"},...opts});
-  if(!res.ok){const e=await res.json().catch(()=>({detail:res.statusText}));throw new Error(e.detail||res.statusText);}
+const API = (localStorage.getItem("livetime_api") || "http://127.0.0.1:8080").replace(/\/$/, "");
+const $ = id => document.getElementById(id);
+
+// ── Auth state ────────────────────────────────────────────────────────────────
+function getToken() { return localStorage.getItem("lv_token"); }
+function getUsername() { return localStorage.getItem("lv_username"); }
+function setAuth(token, username) {
+  localStorage.setItem("lv_token", token);
+  localStorage.setItem("lv_username", username);
+}
+function clearAuth() {
+  localStorage.removeItem("lv_token");
+  localStorage.removeItem("lv_username");
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const token = getToken();
+  const headers = { "Content-Type": "application/json", ...opts.headers };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (res.status === 401) {
+    clearAuth();
+    showAuthPage();
+    throw new Error("登入已過期，請重新登入");
+  }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(e.detail || res.statusText);
+  }
   return res.json();
 }
-function toast(msg,type="ok"){
-  const el=document.createElement("div");el.className=`toast toast-${type}`;el.textContent=msg;
-  $("toast-root").appendChild(el);setTimeout(()=>el.remove(),3500);
+
+function toast(msg, type = "ok") {
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  $("toast-root").appendChild(el);
+  setTimeout(() => el.remove(), 3500);
 }
-function showView(name,btn){
-  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
-  document.querySelectorAll(".nav-item").forEach(b=>b.classList.remove("active"));
-  $(`view-${name}`).classList.add("active");btn.classList.add("active");
-  if(name==="dashboard"&&!$("dashboard-body").dataset.loaded)loadDashboard();
+
+// ── Auth page ─────────────────────────────────────────────────────────────────
+function showAuthPage() {
+  $("auth-page").style.display = "flex";
+  $("app").classList.remove("visible");
 }
-const TYPE_COLOR={learn:"var(--t-learn)",work:"var(--t-work)",intern:"var(--t-intern)",job:"var(--t-job)",life:"var(--t-life)"};
-const MOMENTUM_EMOJI={up:"⬆️",calm:"🌊",intense:"⚡"};
-const MOMENTUM_COLOR={up:"rgba(52,227,168,.18)",calm:"rgba(90,209,255,.18)",intense:"rgba(255,200,97,.18)"};
-const MOMENTUM_TEXT={up:"#34e3a8",calm:"#5ad1ff",intense:"#ffc861"};
-function renderEvent(ev){
+
+function showApp() {
+  $("auth-page").style.display = "none";
+  $("app").classList.add("visible");
+  const username = getUsername() || "使用者";
+  $("user-display-name").textContent = username;
+  $("user-avatar").textContent = username.charAt(0).toUpperCase();
+}
+
+function switchTab(tab) {
+  $("tab-login").classList.toggle("active", tab === "login");
+  $("tab-register").classList.toggle("active", tab === "register");
+  $("form-login").style.display = tab === "login" ? "flex" : "none";
+  $("form-register").style.display = tab === "register" ? "flex" : "none";
+  $("auth-error").classList.remove("show");
+}
+
+function showAuthError(msg) {
+  const el = $("auth-error");
+  el.textContent = msg;
+  el.classList.add("show");
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const username = $("login-username").value.trim();
+  const password = $("login-password").value;
+  try {
+    const data = await fetch(API + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    }).then(async r => {
+      if (!r.ok) { const e = await r.json(); throw new Error(e.detail || "登入失敗"); }
+      return r.json();
+    });
+    setAuth(data.token, data.username);
+    showApp();
+    checkApiStatus();
+    loadTimeline(null, null, null);
+  } catch (err) { showAuthError(err.message); }
+}
+
+async function doRegister(e) {
+  e.preventDefault();
+  const username = $("reg-username").value.trim();
+  const password = $("reg-password").value;
+  const password2 = $("reg-password2").value;
+  if (password !== password2) { showAuthError("兩次密碼不一致"); return; }
+  try {
+    const data = await fetch(API + "/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    }).then(async r => {
+      if (!r.ok) { const e = await r.json(); throw new Error(e.detail || "註冊失敗"); }
+      return r.json();
+    });
+    setAuth(data.token, data.username);
+    showApp();
+    checkApiStatus();
+    loadTimeline(null, null, null);
+    toast(`歡迎，${data.username}！你的時光機已啟動 🚀`);
+  } catch (err) { showAuthError(err.message); }
+}
+
+function doLogout() {
+  if (!confirm("確定要登出嗎？")) return;
+  clearAuth();
+  $("dashboard-body").dataset.loaded = "";
+  $("console-log").innerHTML = "";
+  showAuthPage();
+  toast("已登出");
+}
+
+// ── Views ─────────────────────────────────────────────────────────────────────
+function showView(name, btn) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+  $(`view-${name}`).classList.add("active");
+  btn.classList.add("active");
+  if (name === "dashboard" && !$("dashboard-body").dataset.loaded) loadDashboard();
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+const TYPE_COLOR = { learn:"var(--t-learn)",work:"var(--t-work)",intern:"var(--t-intern)",job:"var(--t-job)",life:"var(--t-life)" };
+const MOMENTUM_EMOJI = { up:"⬆️",calm:"🌊",intense:"⚡" };
+const MOMENTUM_COLOR = { up:"rgba(52,227,168,.18)",calm:"rgba(90,209,255,.18)",intense:"rgba(255,200,97,.18)" };
+const MOMENTUM_TEXT  = { up:"#34e3a8",calm:"#5ad1ff",intense:"#ffc861" };
+
+function renderEvent(ev) {
+  const tb = TYPE_COLOR[ev.type] || "var(--a2)";
+  const me = MOMENTUM_EMOJI[ev.momentum] || "";
+  const mb = MOMENTUM_COLOR[ev.momentum] || "var(--bg-3)";
+  const mt = MOMENTUM_TEXT[ev.momentum]  || "var(--txt-2)";
+  const tags = (ev.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+  return `<div class="event-card" data-id="${ev.id}">
+    <div class="event-dot"></div>
+    <div class="event-inner" onclick="openModal('${ev.id}')">
+      <div class="event-meta">
+        <span class="event-date">${ev.date_label}</span>
+        <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
+        ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
+      </div>
+      <div class="event-title">${escapeHtml(ev.title)}</div>
+      <div class="event-desc">${escapeHtml(ev.description||"")}</div>
+      ${tags?`<div class="tag-row">${tags}</div>`:""}
+      <div class="detail-hint">點擊查看詳情 →</div>
+    </div>
+  </div>`;
+}
+function renderSkeletons(n=4){return Array.from({length:n},()=>`<div class="skeleton sk-card"></div>`).join("");}
+
+// ── Timeline ──────────────────────────────────────────────────────────────────
+async function loadTimeline(year, category, query) {
+  const body = $("timeline-body");
+  body.innerHTML = renderSkeletons();
+  try {
+    let data;
+    if (query && query.length > 0) {
+      const rows = await apiFetch(`/api/search?q=${encodeURIComponent(query)}&limit=50`);
+      data = { events: rows, total: rows.length };
+    } else {
+      const p = new URLSearchParams({ limit:100 });
+      if (year) p.set("year", year);
+      if (category) p.set("category", category);
+      data = await apiFetch(`/api/events?${p}`);
+    }
+    $("event-count").textContent = `共 ${data.total} 筆`;
+    if (!data.events.length) { body.innerHTML=`<div class="empty">找不到符合條件的事件</div>`; return; }
+    body.innerHTML = `<div class="timeline-wrap"><div class="timeline-axis"></div>${data.events.map(renderEvent).join("")}</div>`;
+  } catch(e) {
+    body.innerHTML = `<div class="empty">❌ 無法載入：${e.message}</div>`;
+    toast(e.message,"err");
+  }
+}
+function applyFilters(){ loadTimeline($("filter-year").value||null,$("filter-cat").value||null,$("filter-search").value.trim()||null); }
+function resetFilters(){ $("filter-year").value="";$("filter-cat").value="";$("filter-search").value=""; loadTimeline(null,null,null); }
+let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,380); }
+
+// ── Backup / Import ───────────────────────────────────────────────────────────
+async function backupTimeline() {
+  try {
+    const events = await apiFetch("/api/backup");
+    const blob = new Blob([JSON.stringify(events,null,2)],{type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="livetime_backup.json"; a.click();
+    URL.revokeObjectURL(url);
+    toast(`已備份 ${events.length} 筆事件`);
+  } catch(e){ toast(e.message,"err"); }
+}
+async function importTimeline(event) {
+  const file = event.target.files[0]; if(!file)return;
+  try {
+    const text = await file.text();
+    const events = JSON.parse(text);
+    if(!Array.isArray(events)) throw new Error("格式錯誤：JSON 必須是陣列");
+    const result = await apiFetch("/api/import",{method:"POST",body:JSON.stringify({events})});
+    toast(`成功匯入 ${result.imported} 筆事件`);
+    loadTimeline(null,null,null);
+  } catch(e){ toast(`匯入失敗：${e.message}`,"err"); }
+  event.target.value="";
+}
+
+// ── Detail Modal ──────────────────────────────────────────────────────────────
+let _currentEventId=null, _currentEventData=null;
+async function openModal(eventId) {
+  _currentEventId = eventId;
+  try {
+    const ev = await apiFetch(`/api/events/${eventId}`);
+    _currentEventData = ev;
+    renderModal(ev);
+    $("detail-modal").classList.add("open");
+    document.body.style.overflow="hidden";
+  } catch(e){ toast(`無法載入：${e.message}`,"err"); }
+}
+function renderModal(ev) {
   const tb=TYPE_COLOR[ev.type]||"var(--a2)";
   const me=MOMENTUM_EMOJI[ev.momentum]||"";
   const mb=MOMENTUM_COLOR[ev.momentum]||"var(--bg-3)";
   const mt=MOMENTUM_TEXT[ev.momentum]||"var(--txt-2)";
-  const tags=(ev.tags||[]).map(t=>`<span class="tag">${t}</span>`).join("");
-  const link=ev.link?`<a class="event-link" href="https://${ev.link}" target="_blank">${ev.link}</a>`:"";
-  return `<div class="event-card"><div class="event-dot"></div><div class="event-inner">
-    <div class="event-meta">
-      <span class="event-date">${ev.date_label}</span>
-      <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
-      ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
-    </div>
-    <div class="event-title">${ev.title}</div>
-    <div class="event-desc">${ev.description||""}</div>
-    ${tags?`<div class="tag-row">${tags}</div>`:""}
-    ${link}
-  </div></div>`;
+  $("modal-title").textContent = ev.title;
+  $("modal-meta").innerHTML = `
+    <span class="event-date">${ev.date_label}</span>
+    <span class="type-badge" style="background:${tb}22;color:${tb};border:1px solid ${tb}44">${ev.type_label||ev.type}</span>
+    ${ev.momentum?`<span class="momentum-badge" style="background:${mb};color:${mt}">${me} ${ev.momentum_label||ev.momentum}</span>`:""}
+  `;
+  $("modal-desc").textContent = ev.description || "（暫無描述）";
+  $("modal-tags").innerHTML = (ev.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("") || `<span style="color:var(--txt-3);font-size:12px">無標籤</span>`;
+  if(ev.link){ $("modal-link-section").style.display=""; $("modal-link").href=ev.link.startsWith("http")?ev.link:`https://${ev.link}`; $("modal-link").textContent=ev.link; }
+  else{ $("modal-link-section").style.display="none"; }
+  $("modal-view-mode").style.display=""; $("modal-edit-mode").style.display="none";
+  $("modal-edit-btn").style.display=""; $("modal-save-btn").style.display="none"; $("modal-cancel-btn").style.display="none";
 }
-function renderSkeletons(n=4){return Array.from({length:n},()=>`<div class="skeleton sk-card"></div>`).join("");}
-async function loadTimeline(year,category,query){
-  const body=$("timeline-body");body.innerHTML=renderSkeletons();
-  try{
-    let data;
-    if(query&&query.length>0){
-      const rows=await apiFetch(`/api/search?q=${encodeURIComponent(query)}&limit=50`);
-      data={events:rows,total:rows.length};
-    }else{
-      const p=new URLSearchParams({limit:100});
-      if(year)p.set("year",year);if(category)p.set("category",category);
-      data=await apiFetch(`/api/events?${p}`);
-    }
-    $("event-count").textContent=`共 ${data.total} 筆`;
-    if(data.events.length===0){body.innerHTML=`<div class="empty">找不到符合條件的事件</div>`;return;}
-    body.innerHTML=`<div class="timeline-wrap"><div class="timeline-axis"></div>${data.events.map(renderEvent).join("")}</div>`;
-  }catch(e){body.innerHTML=`<div class="empty">❌ 無法載入：${e.message}</div>`;toast(e.message,"err");}
+function closeModal(){ $("detail-modal").classList.remove("open"); document.body.style.overflow=""; _currentEventId=null; _currentEventData=null; }
+function handleModalOverlayClick(e){ if(e.target===$("detail-modal"))closeModal(); }
+
+// Edit mode
+function toggleEditMode() {
+  const ev=_currentEventData;
+  $("edit-title").value=ev.title||""; $("edit-type").value=ev.type||"learn";
+  $("edit-momentum").value=ev.momentum||""; $("edit-desc").value=ev.description||"";
+  $("edit-tags").value=(ev.tags||[]).join(", "); $("edit-link").value=ev.link||"";
+  $("modal-view-mode").style.display="none"; $("modal-edit-mode").style.display="";
+  $("modal-edit-btn").style.display="none"; $("modal-save-btn").style.display=""; $("modal-cancel-btn").style.display="";
 }
-function applyFilters(){
-  loadTimeline($("filter-year").value||null,$("filter-cat").value||null,$("filter-search").value.trim()||null);
+function cancelEdit() {
+  $("modal-view-mode").style.display=""; $("modal-edit-mode").style.display="none";
+  $("modal-edit-btn").style.display=""; $("modal-save-btn").style.display="none"; $("modal-cancel-btn").style.display="none";
 }
-function resetFilters(){
-  $("filter-year").value="";$("filter-cat").value="";$("filter-search").value="";
-  loadTimeline(null,null,null);
+async function saveEvent() {
+  const tags=$("edit-tags").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const payload={title:$("edit-title").value.trim(),type:$("edit-type").value,momentum:$("edit-momentum").value||null,description:$("edit-desc").value.trim(),link:$("edit-link").value.trim()||null,tags};
+  try {
+    const updated=await apiFetch(`/api/events/${_currentEventId}`,{method:"PUT",body:JSON.stringify(payload)});
+    _currentEventData=updated; renderModal(updated); toast("已儲存變更");
+    const card=document.querySelector(`.event-card[data-id="${_currentEventId}"]`);
+    if(card) card.outerHTML=renderEvent(updated);
+  } catch(e){ toast(`儲存失敗：${e.message}`,"err"); }
 }
-let _t;function debounceSearch(){clearTimeout(_t);_t=setTimeout(applyFilters,380);}
-async function loadDashboard(){
-  const body=$("dashboard-body");body.innerHTML=renderSkeletons(3);
-  try{
+
+// Delete
+function confirmDelete() {
+  const title=_currentEventData?.title||"這筆事件";
+  if(!confirm(`確定要永久刪除這段時光回憶嗎？\n\n「${title}」\n\n此操作無法復原。`))return;
+  doDeleteEvent();
+}
+async function doDeleteEvent() {
+  try {
+    await apiFetch(`/api/events/${_currentEventId}`,{method:"DELETE"});
+    toast("事件已刪除");
+    const card=document.querySelector(`.event-card[data-id="${_currentEventId}"]`);
+    if(card){ card.classList.add("card-fade-out"); setTimeout(()=>card.remove(),300); }
+    closeModal();
+  } catch(e){ toast(`刪除失敗：${e.message}`,"err"); }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const body=$("dashboard-body"); body.innerHTML=renderSkeletons(3);
+  try {
     const[s,sk,sr]=await Promise.all([apiFetch("/api/stats"),apiFetch("/api/skills"),apiFetch("/api/mood-series")]);
     const top=s.by_category[0]||{};
+    const moodMax=sr.length?Math.max(...sr.map(x=>x.mood)):0;
     body.innerHTML=`
     <div class="stats-grid">
-      ${[["事件總數",s.total_events,"筆"],["最活躍分類",top.label||"-",""],
-         ["情緒高點",Math.max(...sr.map(x=>x.mood)),"/100"],["技能種類",sk.length,"項"]]
-        .map(([k,v,u])=>`<div class="card stat-card"><div class="stat-val">${v}</div>
-          <div class="stat-label">${k}${u?`<span style="font-size:10px;color:var(--txt-3)"> ${u}</span>`:""}</div></div>`).join("")}
+      ${[["事件總數",s.total_events,"筆"],["最活躍分類",top.label||"-",""],["情緒高點",moodMax,"/100"],["技能種類",sk.length,"項"]]
+        .map(([k,v,u])=>`<div class="card stat-card"><div class="stat-val">${v}</div><div class="stat-label">${k}${u?`<span style="font-size:10px;color:var(--txt-3)"> ${u}</span>`:""}</div></div>`).join("")}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
       <div class="card"><div class="section-title">技能雷達</div><div class="bar-chart">
-        ${sk.map(x=>`<div class="bar-row"><span class="bar-label">${x.name}</span>
-          <span class="bar-track"><span class="bar-fill" style="width:${x.value}%"></span></span>
-          <span class="bar-val">${x.value}</span></div>`).join("")}
+        ${sk.map(x=>`<div class="bar-row"><span class="bar-label">${escapeHtml(x.name)}</span><span class="bar-track"><span class="bar-fill" style="width:${x.value}%"></span></span><span class="bar-val">${x.value}</span></div>`).join("")}
       </div></div>
       <div class="card"><div class="section-title">分類分布</div><div class="bar-chart">
-        ${s.by_category.map(c=>`<div class="bar-row"><span class="bar-label">${c.label}</span>
-          <span class="bar-track"><span class="bar-fill"
-            style="width:${Math.round(c.count/s.total_events*100)}%;background:${TYPE_COLOR[c.type]||'var(--a1)'}"></span></span>
-          <span class="bar-val">${c.count}</span></div>`).join("")}
+        ${s.by_category.map(c=>`<div class="bar-row"><span class="bar-label">${escapeHtml(c.label)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.round(c.count/s.total_events*100)}%;background:${TYPE_COLOR[c.type]||"var(--a1)"}"></span></span><span class="bar-val">${c.count}</span></div>`).join("")}
       </div></div>
     </div>
-    <div class="card" style="margin-top:18px"><div class="section-title">情緒 & 動能曲線</div>
-      ${renderSparkline(sr)}</div>`;
+    <div class="card" style="margin-top:18px"><div class="section-title">情緒 &amp; 動能曲線</div>${renderSparkline(sr)}</div>`;
     body.dataset.loaded="1";
-  }catch(e){body.innerHTML=`<div class="empty">❌ 無法載入：${e.message}</div>`;toast(e.message,"err");}
+  } catch(e){ body.innerHTML=`<div class="empty">❌ 無法載入：${e.message}</div>`; toast(e.message,"err"); }
 }
-function renderSparkline(series){
+
+function renderSparkline(series) {
   if(!series.length)return"";
   const W=700,H=90,P=24;
   const xS=(W-P*2)/(series.length-1);
   const yS=v=>H-P-(v/100)*(H-P*2);
-  const poly=(vals,color)=>`<polyline points="${vals.map((v,i)=>`${P+i*xS},${yS(v)}`).join(" ")}"
-    fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+  const poly=(vals,color)=>`<polyline points="${vals.map((v,i)=>`${P+i*xS},${yS(v)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
   const dots=(vals,color)=>vals.map((v,i)=>`<circle cx="${P+i*xS}" cy="${yS(v)}" r="3" fill="${color}"/>`).join("");
   const labels=series.filter((_,i)=>i%2===0||i===series.length-1).map((_,ii)=>{
     const i=Math.min(ii*2,series.length-1);
@@ -273,23 +825,48 @@ function renderSparkline(series){
       <span><span style="width:12px;height:2px;background:var(--a2);display:inline-block"></span> 動能</span>
     </div></div>`;
 }
-function appendMsg(role,text){
-  const log=$("console-log");const div=document.createElement("div");
-  div.className=`msg msg-${role}`;
-  div.innerHTML=`<div class="msg-label">${role==="user"?"你":"🤖 時光機 AI"}</div><div class="bubble">${text}</div>`;
-  log.appendChild(div);log.scrollTop=log.scrollHeight;return div;
+
+// ── AI Console ────────────────────────────────────────────────────────────────
+function showAiLoading(show){ $("ai-loading").classList.toggle("show",show); }
+
+async function runAnalyze() {
+  appendMsg("user","🔮 一鍵 AI 深度分析");
+  showAiLoading(true);
+  try {
+    const data=await apiFetch("/api/analyze",{method:"POST"});
+    showAiLoading(false);
+    const msgDiv=appendMsg("ai",mdToHtml(data.report));
+    const btn=document.createElement("button");
+    btn.className="btn btn-ghost btn-sm"; btn.style.cssText="display:inline-flex;margin-top:10px";
+    btn.innerHTML="📄 導出分析報告 PDF"; btn.onclick=()=>exportReportPDF(data.report);
+    msgDiv.querySelector(".bubble").appendChild(document.createElement("br"));
+    msgDiv.querySelector(".bubble").appendChild(btn);
+  } catch(e){ showAiLoading(false); appendMsg("ai",`❌ ${escapeHtml(e.message)}`); }
 }
-async function consoleSend(){
-  const input=$("console-input");const text=input.value.trim();if(!text)return;
-  input.value="";appendMsg("user",escapeHtml(text));
+
+function exportReportPDF(reportText){ $("print-report-content").textContent=reportText; window.print(); }
+
+function appendMsg(role,html) {
+  const log=$("console-log"); const div=document.createElement("div");
+  div.className=`msg msg-${role}`;
+  div.innerHTML=`<div class="msg-label">${role==="user"?"你":"🤖 時光機 AI"}</div><div class="bubble">${html}</div>`;
+  log.appendChild(div); log.scrollTop=log.scrollHeight; return div;
+}
+
+async function consoleSend() {
+  const input=$("console-input"); const text=input.value.trim(); if(!text)return;
+  input.value=""; appendMsg("user",escapeHtml(text));
+  if(text.trim()==="/analyze"){ await runAnalyze(); return; }
   const w=appendMsg("ai",'<span class="loading-dots">思考中</span>');
-  try{
+  try {
     const data=await apiFetch("/api/chat",{method:"POST",body:JSON.stringify({message:text})});
     w.querySelector(".bubble").innerHTML=mdToHtml(data.reply);
-  }catch(e){w.querySelector(".bubble").innerHTML=`❌ ${escapeHtml(e.message)}`;}
+  } catch(e){ w.querySelector(".bubble").innerHTML=`❌ ${escapeHtml(e.message)}`; }
 }
-function consoleKeydown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();consoleSend();}}
-function escapeHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function consoleKeydown(e){ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();consoleSend();} }
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escapeHtml(s){ if(!s)return""; return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function mdToHtml(md){
   return escapeHtml(md)
     .replace(/```[\w]*\n?([\s\S]*?)```/g,(_,c)=>`<pre style="background:var(--bg);padding:10px;border-radius:8px;overflow:auto;font-size:12px;color:var(--a1)">${c}</pre>`)
@@ -299,13 +876,27 @@ function mdToHtml(md){
     .replace(/^[-•] (.+)$/gm,"• $1")
     .replace(/\n/g,"<br>");
 }
-async function checkApiStatus(){
-  try{await apiFetch("/api/stats");$("api-status").textContent="後端已連線";$("api-status").style.color="var(--a1)";}
-  catch{$("api-status").textContent="後端未連線";$("api-status").style.color="#f87171";}
+
+async function checkApiStatus() {
+  try {
+    await apiFetch("/api/health");
+    $("api-status").textContent="後端已連線"; $("api-status").style.color="var(--a1)";
+  } catch {
+    $("api-status").textContent="後端未連線"; $("api-status").style.color="#f87171";
+  }
 }
-checkApiStatus();
-loadTimeline(null,null,null);
-window.setApiUrl=url=>{localStorage.setItem("livetime_api",url);location.reload();};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+if (getToken()) {
+  showApp();
+  checkApiStatus();
+  loadTimeline(null, null, null);
+} else {
+  showAuthPage();
+}
+
+document.addEventListener("keydown", e => { if(e.key==="Escape") closeModal(); });
+window.setApiUrl = url => { localStorage.setItem("livetime_api",url); location.reload(); };
 </script>
 </body>
 </html>
