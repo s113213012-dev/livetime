@@ -254,8 +254,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
   #print-report{display:block!important;padding:24px;font-family:sans-serif}
   #print-report h1{color:#111;font-size:20px;margin-bottom:16px}
   #print-report .report-content{color:#333;line-height:1.8;font-size:14px;white-space:pre-wrap}
+  #print-timeline{display:block!important;padding:24px;font-family:sans-serif;max-width:820px;margin:0 auto}
+  #print-timeline h1{color:#111;font-size:22px;margin-bottom:6px;border-bottom:2px solid #333;padding-bottom:8px}
+  #print-timeline .pt-meta{font-size:12px;color:#666;margin-bottom:24px}
+  #print-timeline .pt-event{border-left:3px solid #555;padding:10px 16px;margin-bottom:18px;page-break-inside:avoid}
+  #print-timeline .pt-date{font-size:11px;color:#888;margin-bottom:3px}
+  #print-timeline .pt-title{font-size:15px;font-weight:bold;color:#111;margin-bottom:4px}
+  #print-timeline .pt-badge{display:inline-block;font-size:10px;padding:1px 6px;border:1px solid #999;border-radius:4px;color:#555;margin-right:4px}
+  #print-timeline .pt-stars{color:#c89400;font-size:12px;margin-left:4px}
+  #print-timeline .pt-desc{font-size:12px;color:#333;margin:4px 0;line-height:1.6}
+  #print-timeline .pt-reflection{font-size:12px;color:#555;font-style:italic;margin:4px 0;line-height:1.6}
+  #print-timeline .pt-tags{font-size:11px;color:#666;margin-top:4px}
+  #print-timeline img.pt-img{max-width:200px;max-height:140px;object-fit:cover;border-radius:6px;margin-top:6px;float:right;margin-left:12px}
 }
-#print-report{display:none}
+#print-report,#print-timeline{display:none}
 </style>
 </head>
 <body>
@@ -526,6 +538,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
   <h1>⏳ Livetime · AI 分析報告</h1>
   <div id="print-report-content" class="report-content"></div>
 </div>
+<div id="print-timeline"></div>
 
 <div id="toast-root"></div>
 
@@ -576,11 +589,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
       </div>
       <div class="action-bar">
         <button class="btn btn-primary" onclick="openAddModal()">✚ 新增事件</button>
-        <button class="btn btn-ghost" onclick="backupTimeline()">⬇️ 備份時光軸</button>
-        <label class="btn btn-ghost" style="cursor:pointer">
-          ⬆️ 匯入備份
-          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importTimeline(event)">
-        </label>
+        <button class="btn btn-ghost" onclick="exportTimelinePDF()">📄 匯出 PDF</button>
       </div>
       <div id="timeline-body"></div>
     </div>
@@ -838,28 +847,38 @@ function applyFilters(){ loadTimeline($("filter-year").value||null,$("filter-cat
 function resetFilters(){ $("filter-year").value="";$("filter-cat").value="";$("filter-search").value=""; loadTimeline(null,null,null); }
 let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,380); }
 
-// ── Backup / Import ───────────────────────────────────────────────────────────
-async function backupTimeline() {
+// ── PDF Export ────────────────────────────────────────────────────────────────
+async function exportTimelinePDF() {
   try {
-    const events = await apiFetch("/api/backup");
-    const blob = new Blob([JSON.stringify(events,null,2)],{type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href=url; a.download="livetime_backup.json"; a.click();
-    URL.revokeObjectURL(url);
-    toast(`已備份 ${events.length} 筆事件`);
-  } catch(e){ toast(e.message,"err"); }
-}
-async function importTimeline(event) {
-  const file = event.target.files[0]; if(!file)return;
-  try {
-    const text = await file.text();
-    const events = JSON.parse(text);
-    if(!Array.isArray(events)) throw new Error("格式錯誤：JSON 必須是陣列");
-    const result = await apiFetch("/api/import",{method:"POST",body:JSON.stringify({events})});
-    toast(`成功匯入 ${result.imported} 筆事件`);
-    loadTimeline(null,null,null);
-  } catch(e){ toast(`匯入失敗：${e.message}`,"err"); }
-  event.target.value="";
+    const data = await apiFetch("/api/events?limit=200");
+    const events = data.events || [];
+    const username = getUsername() || "我";
+    const now = new Date().toLocaleDateString("zh-TW");
+    const TYPE_LABEL = {learn:"學習",work:"作品",intern:"實習",job:"工作",life:"生活"};
+    const MOM_LABEL = {up:"成就感高",calm:"沉澱期",intense:"高壓衝刺"};
+    const rows = events.map(ev=>{
+      const stars = ev.importance ? "★".repeat(ev.importance)+"☆".repeat(5-ev.importance) : "";
+      const badges = [ev.type_label||TYPE_LABEL[ev.type]||ev.type, ev.momentum?MOM_LABEL[ev.momentum]:""].filter(Boolean)
+        .map(b=>`<span class="pt-badge">${b}</span>`).join("");
+      const tags = (ev.tags||[]).length ? `<div class="pt-tags">🏷 ${ev.tags.join(" · ")}</div>` : "";
+      const desc = ev.description ? `<div class="pt-desc">${ev.description}</div>` : "";
+      const refl = ev.reflection ? `<div class="pt-reflection">💬 ${ev.reflection}</div>` : "";
+      const img = ev.image_data ? `<img class="pt-img" src="${ev.image_data}">` : "";
+      return `<div class="pt-event">
+        ${img}
+        <div class="pt-date">${ev.date_label}</div>
+        <div class="pt-title">${ev.title} ${stars?`<span class="pt-stars">${stars}</span>`:""}</div>
+        <div>${badges}</div>
+        ${desc}${refl}${tags}
+        <div style="clear:both"></div>
+      </div>`;
+    }).join("");
+    $("print-report-content").textContent=""; // 確保不重疊
+    $("print-timeline").innerHTML = `<h1>⏳ ${username} 的時光軸</h1>
+      <div class="pt-meta">共 ${events.length} 筆事件 · 匯出時間：${now}</div>
+      ${rows}`;
+    window.print();
+  } catch(e){ toast("匯出失敗："+e.message,"err"); }
 }
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
@@ -970,45 +989,58 @@ async function doDeleteEvent() {
 async function loadDashboard() {
   const body=$("dashboard-body"); body.innerHTML=renderSkeletons(3);
   try {
-    const[s,sk,sr]=await Promise.all([apiFetch("/api/stats"),apiFetch("/api/skills"),apiFetch("/api/mood-series")]);
+    const[s,evData]=await Promise.all([apiFetch("/api/stats"),apiFetch("/api/events?limit=200")]);
+    const events=evData.events||[];
     const top=s.by_category[0]||{};
-    const moodMax=sr.length?Math.max(...sr.map(x=>x.mood)):0;
+    // Build monthly series from actual events
+    const MOM_SCORE={up:88,calm:45,intense:68};
+    const byMonth={};
+    events.forEach(ev=>{
+      if(!ev.date_sort) return;
+      const ym=String(ev.date_sort).slice(0,6); // YYYYMM
+      if(!byMonth[ym]) byMonth[ym]={scores:[],count:0};
+      byMonth[ym].scores.push(MOM_SCORE[ev.momentum]??52);
+      byMonth[ym].count++;
+    });
+    const maxCount=Math.max(1,...Object.values(byMonth).map(v=>v.count));
+    const series=Object.keys(byMonth).sort().map(ym=>{
+      const d=byMonth[ym];
+      const mood=Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length);
+      const activity=Math.round(Math.min(d.count/maxCount,1)*100);
+      const y=ym.slice(0,4), m=parseInt(ym.slice(4));
+      return{month:`${y.slice(2)}/${String(m).padStart(2,"0")}`,mood,activity};
+    });
+    const moodMax=series.length?Math.max(...series.map(x=>x.mood)):0;
     body.innerHTML=`
     <div class="stats-grid">
-      ${[["事件總數",s.total_events,"筆"],["最活躍分類",top.label||"-",""],["情緒高點",moodMax,"/100"],["技能種類",sk.length,"項"]]
+      ${[["事件總數",s.total_events,"筆"],["最活躍分類",top.label||"-",""],["情緒高點",moodMax,"/100"],["記錄月份",series.length,"個月"]]
         .map(([k,v,u])=>`<div class="card stat-card"><div class="stat-val">${v}</div><div class="stat-label">${k}${u?`<span style="font-size:10px;color:var(--txt-3)"> ${u}</span>`:""}</div></div>`).join("")}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-      <div class="card"><div class="section-title">技能雷達</div><div class="bar-chart">
-        ${sk.map(x=>`<div class="bar-row"><span class="bar-label">${escapeHtml(x.name)}</span><span class="bar-track"><span class="bar-fill" style="width:${x.value}%"></span></span><span class="bar-val">${x.value}</span></div>`).join("")}
-      </div></div>
-      <div class="card"><div class="section-title">分類分布</div><div class="bar-chart">
-        ${s.by_category.map(c=>`<div class="bar-row"><span class="bar-label">${escapeHtml(c.label)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.round(c.count/s.total_events*100)}%;background:${TYPE_COLOR[c.type]||"var(--a1)"}"></span></span><span class="bar-val">${c.count}</span></div>`).join("")}
-      </div></div>
-    </div>
-    <div class="card" style="margin-top:18px"><div class="section-title">情緒 &amp; 動能曲線</div>${renderSparkline(sr)}</div>`;
+    <div class="card"><div class="section-title">分類分布</div><div class="bar-chart">
+      ${s.by_category.map(c=>`<div class="bar-row"><span class="bar-label">${escapeHtml(c.label)}</span><span class="bar-track"><span class="bar-fill" style="width:${s.total_events?Math.round(c.count/s.total_events*100):0}%;background:${TYPE_COLOR[c.type]||"var(--a1)"}"></span></span><span class="bar-val">${c.count}</span></div>`).join("")}
+    </div></div>
+    <div class="card" style="margin-top:18px"><div class="section-title">情緒 &amp; 活躍度曲線</div>${renderSparkline(series)}</div>`;
     body.dataset.loaded="1";
   } catch(e){ body.innerHTML=`<div class="empty">❌ 無法載入：${e.message}</div>`; toast(e.message,"err"); }
 }
 
 function renderSparkline(series) {
-  if(!series.length)return"";
-  const W=700,H=90,P=24;
-  const xS=(W-P*2)/(series.length-1);
+  if(series.length<2)return`<div style="color:var(--txt-3);font-size:13px;padding:16px">新增更多事件後即可看到趨勢曲線</div>`;
+  const W=700,H=100,P=28;
+  const xS=(W-P*2)/(series.length-1||1);
   const yS=v=>H-P-(v/100)*(H-P*2);
-  const poly=(vals,color)=>`<polyline points="${vals.map((v,i)=>`${P+i*xS},${yS(v)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
-  const dots=(vals,color)=>vals.map((v,i)=>`<circle cx="${P+i*xS}" cy="${yS(v)}" r="3" fill="${color}"/>`).join("");
-  const labels=series.filter((_,i)=>i%2===0||i===series.length-1).map((_,ii)=>{
-    const i=Math.min(ii*2,series.length-1);
-    return`<text x="${P+i*xS}" y="${H-4}" text-anchor="middle" fill="var(--txt-3)" style="font-size:9px">${series[i].month}</text>`;
-  }).join("");
-  return`<div class="sparkline-wrap"><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px">
+  const poly=(vals,color)=>`<polyline points="${vals.map((v,i)=>`${P+i*xS},${yS(v)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const dots=(vals,color)=>vals.map((v,i)=>`<circle cx="${P+i*xS}" cy="${yS(v)}" r="3.5" fill="${color}"/>`).join("");
+  const labels=series.filter((_,i)=>i===0||i===series.length-1||i%(Math.ceil(series.length/6))===0).map(s=>
+    `<text x="${P+series.indexOf(s)*xS}" y="${H-6}" text-anchor="middle" fill="var(--txt-3)" style="font-size:9px">${s.month}</text>`
+  ).join("");
+  return`<div class="sparkline-wrap"><svg viewBox="0 0 ${W} ${H}" style="width:100%">
     ${poly(series.map(s=>s.mood),"var(--a1)")}${dots(series.map(s=>s.mood),"var(--a1)")}
-    ${poly(series.map(s=>s.prod),"var(--a2)")}${dots(series.map(s=>s.prod),"var(--a2)")}
+    ${poly(series.map(s=>s.activity),"var(--a2)")}${dots(series.map(s=>s.activity),"var(--a2)")}
     ${labels}</svg>
-    <div style="display:flex;gap:16px;font-size:12px;color:var(--txt-3);margin-top:4px">
-      <span><span style="width:12px;height:2px;background:var(--a1);display:inline-block"></span> 情緒</span>
-      <span><span style="width:12px;height:2px;background:var(--a2);display:inline-block"></span> 動能</span>
+    <div style="display:flex;gap:16px;font-size:12px;color:var(--txt-3);margin-top:6px">
+      <span><span style="width:14px;height:3px;background:var(--a1);display:inline-block;vertical-align:middle;border-radius:2px"></span> 情緒（↑成就感 ↓沉澱期）</span>
+      <span><span style="width:14px;height:3px;background:var(--a2);display:inline-block;vertical-align:middle;border-radius:2px"></span> 活躍度（當月事件數）</span>
     </div></div>`;
 }
 
@@ -1030,7 +1062,11 @@ async function runAnalyze() {
   } catch(e){ showAiLoading(false); appendMsg("ai",`❌ ${escapeHtml(e.message)}`); }
 }
 
-function exportReportPDF(reportText){ $("print-report-content").textContent=reportText; window.print(); }
+function exportReportPDF(reportText){
+  $("print-report-content").textContent=reportText;
+  $("print-timeline").innerHTML=""; // 確保不重疊
+  window.print();
+}
 
 function appendMsg(role,html) {
   const log=$("console-log"); const div=document.createElement("div");
