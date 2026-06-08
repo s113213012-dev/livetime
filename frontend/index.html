@@ -873,22 +873,26 @@ let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,
 // Helper: render a Chart.js chart to a base64 PNG in an off-screen canvas
 function renderChartToImg(type, data, options, w=700, h=320) {
   return new Promise(resolve => {
-    const wrap = document.createElement("div");
-    wrap.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${w}px;height:${h}px`;
     const canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
-    wrap.appendChild(canvas); document.body.appendChild(wrap);
-    Chart.defaults.color = "#333";
-    const chart = new Chart(canvas, {type, data, options:{...options, animation:{duration:0}, responsive:false}});
-    // Wait one frame for Chart to paint
-    requestAnimationFrame(()=>{
-      requestAnimationFrame(()=>{
-        const img = `<img src="${canvas.toDataURL("image/png")}" style="width:100%;border:1px solid #eee;border-radius:8px">`;
-        chart.destroy(); document.body.removeChild(wrap);
-        Chart.defaults.color = "#94a3c0"; // restore
-        resolve(img);
-      });
+    canvas.style.cssText = "position:fixed;left:-9999px;top:0;visibility:hidden";
+    document.body.appendChild(canvas);
+    const chart = new Chart(canvas, {
+      type, data,
+      options: {
+        ...options,
+        animation: false,
+        responsive: false,
+        devicePixelRatio: 1,
+      }
     });
+    setTimeout(() => {
+      let img = "";
+      try { img = `<img src="${canvas.toDataURL("image/png")}" style="width:100%;border:1px solid #ddd;border-radius:8px">`; } catch(e){}
+      try { chart.destroy(); } catch(e){}
+      try { document.body.removeChild(canvas); } catch(e){}
+      resolve(img);
+    }, 300);
   });
 }
 
@@ -906,7 +910,8 @@ async function exportTimelinePDF() {
     const ALL_CATS=[{key:"learn",label:"學習"},{key:"work",label:"作品"},{key:"intern",label:"實習"},{key:"job",label:"工作"},{key:"life",label:"生活"}];
     const CHART_GRID = {color:"rgba(180,180,180,.4)"};
 
-    // ── Render charts off-screen ──────────────────────────────────
+    // ── Render charts off-screen (light theme for PDF) ───────────
+    Chart.defaults.color = "#333";
     let chartBarImg="", chartDoughnutImg="", chartRadarImg="";
     if(dashStats){
       // Bar chart
@@ -937,6 +942,7 @@ async function exportTimelinePDF() {
         400, 280
       );
     }
+    Chart.defaults.color = "#94a3c0"; // restore dark theme
 
     // ── AI career report ──────────────────────────────────────────
     const careerBox = $("career-report-box");
