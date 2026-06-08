@@ -14,8 +14,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import anthropic
-from anthropic import Anthropic
+import os
+import google.generativeai as genai
 
 from seed import get_conn
 
@@ -205,9 +205,12 @@ UNKNOWN_HELP = """目前支援的指令：
 
 
 class LivetimeAgent:
-    def __init__(self, model: str = "claude-opus-4-8"):
-        self.client = Anthropic()
-        self.model = model
+    def __init__(self, model: str = "gemini-1.5-flash"):
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+        self.model = genai.GenerativeModel(
+            model_name=model,
+            system_instruction=SYSTEM_PROMPT,
+        )
         self.history: list[dict] = []
 
     def chat(self, user_input: str) -> str:
@@ -223,7 +226,7 @@ class LivetimeAgent:
                 f"資料庫資料（JSON）：\n\n```json\n{context}\n```\n\n"
                 "請依照 System Prompt 的 `/analyze` 格式生成完整洞察報告。"
             )
-            return self._ask_claude(injected, stateful=False)
+            return self._ask_gemini(injected, stateful=False)
         if cmd == "export":
             events, meta = build_export_context(kwargs["public_only"])
             events_json = json.dumps(events, ensure_ascii=False, indent=2)
@@ -235,7 +238,7 @@ class LivetimeAgent:
                 f"exported_at: {date.today().isoformat()}\n\n"
                 "請依照 System Prompt 的 `/export` 格式潤飾並輸出 JSON。"
             )
-            return self._ask_claude(injected, stateful=False)
+            return self._ask_gemini(injected, stateful=False)
         if cmd == "chat":
             text = kwargs["text"]
             data_kw = re.compile(
@@ -245,21 +248,16 @@ class LivetimeAgent:
             if data_kw.search(text):
                 stats = _get_summary_stats()
                 text += f"\n\n[工具上下文] 統計摘要：{json.dumps(stats, ensure_ascii=False)}"
-            return self._ask_claude(text, stateful=True)
+            return self._ask_gemini(text, stateful=True)
         return UNKNOWN_HELP
 
-    def _ask_claude(self, user_content: str, stateful: bool) -> str:
-        messages = self.history + [{"role": "user", "content": user_content}]
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-        )
-        reply = response.content[0].text
+    def _ask_gemini(self, user_content: str, stateful: bool) -> str:
+        chat = self.model.start_chat(history=self.history)
+        response = chat.send_message(user_content)
+        reply = response.text
         if stateful:
-            self.history.append({"role": "user", "content": user_content})
-            self.history.append({"role": "assistant", "content": reply})
+            self.history.append({"role": "user", "parts": [user_content]})
+            self.history.append({"role": "model", "parts": [reply]})
             self.history = self.history[-40:]
         return reply
 

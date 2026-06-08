@@ -13,9 +13,9 @@ from __future__ import annotations
 import os
 import sys
 
-# Load ANTHROPIC_API_KEY from .env if not already set in the environment
+# Load GEMINI_API_KEY from .env if not already set in the environment
 _env_file = os.path.join(os.path.dirname(__file__), ".env")
-if os.path.exists(_env_file) and not os.environ.get("ANTHROPIC_API_KEY"):
+if os.path.exists(_env_file):
     with open(_env_file) as _f:
         for _line in _f:
             _line = _line.strip()
@@ -25,7 +25,6 @@ if os.path.exists(_env_file) and not os.environ.get("ANTHROPIC_API_KEY"):
 from pathlib import Path
 from typing import Optional
 
-import anthropic
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -172,10 +171,10 @@ class ChatRequest(BaseModel):
 
 
 def _check_api_key():
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    if not os.environ.get("GEMINI_API_KEY"):
         raise HTTPException(
             status_code=503,
-            detail="ANTHROPIC_API_KEY not set — AI features unavailable",
+            detail="GEMINI_API_KEY not set — AI features unavailable",
         )
 
 
@@ -184,10 +183,8 @@ def analyze():
     _check_api_key()
     try:
         report = get_agent().chat("/analyze")
-    except anthropic.APIStatusError as e:
-        raise HTTPException(status_code=502, detail=f"Anthropic API 錯誤：{e.message}")
-    except anthropic.APIConnectionError:
-        raise HTTPException(status_code=502, detail="無法連線至 Anthropic API，請確認網路或 API Key 是否正確")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gemini API 錯誤：{str(e)}")
     return {"report": report}
 
 @app.post("/api/export")
