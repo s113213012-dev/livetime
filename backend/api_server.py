@@ -27,7 +27,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from passlib.context import CryptContext
+import bcrypt
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -42,7 +42,11 @@ SECRET_KEY = os.environ.get("JWT_SECRET", "livetime-change-this-secret-in-produc
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _hash_password(plain: str) -> str:
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Livetime API", version="3.0.0")
@@ -126,7 +130,7 @@ def register(req: RegisterRequest):
     if conn.execute("SELECT id FROM users WHERE username=?", (req.username,)).fetchone():
         conn.close()
         raise HTTPException(400, "此使用者名稱已被使用")
-    hashed = pwd_context.hash(req.password)
+    hashed = _hash_password(req.password)
     cur = conn.execute(
         "INSERT INTO users(username, hashed_password) VALUES(?,?)",
         (req.username.strip(), hashed),
@@ -146,7 +150,7 @@ def login(req: LoginRequest):
         (req.username,),
     ).fetchone()
     conn.close()
-    if not row or not pwd_context.verify(req.password, row["hashed_password"]):
+    if not row or not _verify_password(req.password, row["hashed_password"]):
         raise HTTPException(401, "使用者名稱或密碼錯誤")
     token = _create_token(row["id"], row["username"])
     return {"token": token, "username": row["username"]}
