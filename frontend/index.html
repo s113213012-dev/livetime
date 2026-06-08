@@ -310,14 +310,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     </div>
 
     <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">登入</button>
-      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">註冊帳號</button>
+      <button class="auth-tab active" id="tab-login" type="button">登入</button>
+      <button class="auth-tab" id="tab-register" type="button">註冊帳號</button>
     </div>
 
     <div id="auth-error" class="auth-error"></div>
 
     <!-- Login Form -->
-    <form id="form-login" class="auth-form" onsubmit="doLogin(event)">
+    <form id="form-login" class="auth-form">
       <div class="auth-field">
         <label>使用者名稱</label>
         <input id="login-username" type="text" placeholder="輸入你的名稱" autocomplete="username" required>
@@ -330,7 +330,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     </form>
 
     <!-- Register Form -->
-    <form id="form-register" class="auth-form" onsubmit="doRegister(event)" style="display:none">
+    <form id="form-register" class="auth-form" style="display:none">
       <div class="auth-field">
         <label>使用者名稱（2 字以上）</label>
         <input id="reg-username" type="text" placeholder="為自己取個名字" autocomplete="username" required>
@@ -347,6 +347,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
     </form>
 
     <div class="auth-hint">你的記憶，只屬於你。</div>
+    <div style="font-size:10px;color:var(--txt-3);text-align:center;margin-top:8px;opacity:.4">v2.1</div>
   </div>
 </div>
 
@@ -1192,6 +1193,12 @@ async function checkApiStatus() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// Wire up auth handlers via addEventListener (more reliable than inline onclick)
+$("tab-login").addEventListener("click", () => switchTab("login"));
+$("tab-register").addEventListener("click", () => switchTab("register"));
+$("form-login").addEventListener("submit", doLogin);
+$("form-register").addEventListener("submit", doRegister);
+
 if (getToken()) {
   showApp();
   checkApiStatus();
