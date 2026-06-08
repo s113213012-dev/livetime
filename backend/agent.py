@@ -1,9 +1,6 @@
 """
 agent.py — Livetime AI Agent
 Slash-command parser + Anthropic API integration.
-
-    python agent.py                        # interactive REPL
-    python agent.py "/timeline 2025 work"  # single command
 """
 from __future__ import annotations
 
@@ -12,7 +9,7 @@ import re
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import anthropic as anthropic_sdk
 
@@ -34,10 +31,13 @@ MOMENTUM_EMOJI = {"up": "⬆️", "calm": "🌊", "intense": "⚡"}
 
 
 def _fetch_events(
-    year=None, category=None, momentum=None, tag=None, limit=100, offset=0,
+    year=None, category=None, momentum=None, tag=None,
+    limit=100, offset=0, user_id: Optional[int] = None,
 ) -> dict[str, Any]:
     conn = get_conn()
     conds, params = [], []
+    if user_id is not None:
+        conds.append("e.user_id = ?"); params.append(user_id)
     if year:
         conds.append("e.date_sort / 100 = ?"); params.append(year)
     if category:
@@ -89,15 +89,21 @@ def _fetch_skills():
     return [dict(r) for r in rows]
 
 
-def _get_summary_stats():
+def _get_summary_stats(user_id: Optional[int] = None):
     conn = get_conn()
-    total = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    uid_filter = "WHERE e.user_id = ?" if user_id is not None else ""
+    uid_params = [user_id] if user_id is not None else []
+    total = conn.execute(
+        f"SELECT COUNT(*) FROM events e {uid_filter}", uid_params
+    ).fetchone()[0]
     by_type = [dict(r) for r in conn.execute(
-        "SELECT e.type, et.label, COUNT(*) AS count FROM events e "
-        "JOIN event_types et ON et.key=e.type GROUP BY e.type ORDER BY count DESC"
+        f"SELECT e.type, et.label, COUNT(*) AS count FROM events e "
+        f"JOIN event_types et ON et.key=e.type {uid_filter} GROUP BY e.type ORDER BY count DESC",
+        uid_params,
     ).fetchall()]
     date_range = dict(conn.execute(
-        "SELECT MIN(date_sort) AS earliest, MAX(date_sort) AS latest FROM events"
+        f"SELECT MIN(date_sort) AS earliest, MAX(date_sort) AS latest FROM events e {uid_filter}",
+        uid_params,
     ).fetchone())
     all_tags = [r["name"] for r in conn.execute(
         "SELECT t.name, COUNT(et.event_id) n FROM tags t "
@@ -108,8 +114,8 @@ def _get_summary_stats():
             "date_range": date_range, "all_tags": all_tags}
 
 
-def render_timeline(year, category):
-    result = _fetch_events(year=year, category=category)
+def render_timeline(year, category, user_id: Optional[int] = None):
+    result = _fetch_events(year=year, category=category, user_id=user_id)
     events = result["events"]
     total = result["total"]
 
@@ -149,14 +155,14 @@ def render_timeline(year, category):
     return "\n".join(lines)
 
 
-def build_analyze_context():
+def build_analyze_context(user_id: Optional[int] = None):
     ctx = {
-        "summary_stats": _get_summary_stats(),
+        "summary_stats": _get_summary_stats(user_id=user_id),
         "events": [
             {k: v for k, v in e.items()
              if k in ("id","title","date_label","date_sort","type","type_label",
                       "momentum","momentum_label","description","tags")}
-            for e in _fetch_events(limit=100)["events"]
+            for e in _fetch_events(limit=100, user_id=user_id)["events"]
         ],
         "mood_series": _fetch_mood_series(),
         "skills": _fetch_skills(),
@@ -164,8 +170,8 @@ def build_analyze_context():
     return json.dumps(ctx, ensure_ascii=False, indent=2)
 
 
-def build_export_context(public_only):
-    events = _fetch_events(limit=100)["events"]
+def build_export_context(public_only, user_id: Optional[int] = None):
+    events = _fetch_events(limit=100, user_id=user_id)["events"]
     if public_only:
         events = [e for e in events if e["type"] != "life"]
     counts: dict[str, int] = {}
@@ -204,19 +210,20 @@ UNKNOWN_HELP = """目前支援的指令：
 
 
 class LivetimeAgent:
-    def __init__(self, model: str = "claude-opus-4-8"):
+    def __init__(self, model: str = "claude-opus-4-8", user_id: Optional[int] = None):
         self.client = anthropic_sdk.Anthropic()
         self.model = model
+        self.user_id = user_id
         self.history: list[dict] = []
 
     def chat(self, user_input: str) -> str:
         cmd, kwargs = parse_slash(user_input)
         if cmd == "timeline":
-            return render_timeline(kwargs["year"], kwargs["category"])
+            return render_timeline(kwargs["year"], kwargs["category"], user_id=self.user_id)
         if cmd == "unknown":
             return UNKNOWN_HELP
         if cmd == "analyze":
-            context = build_analyze_context()
+            context = build_analyze_context(user_id=self.user_id)
             injected = (
                 "使用者輸入了 `/analyze`。\n\n"
                 f"資料庫資料（JSON）：\n\n```json\n{context}\n```\n\n"
@@ -224,7 +231,7 @@ class LivetimeAgent:
             )
             return self._ask_claude(injected, stateful=False)
         if cmd == "export":
-            events, meta = build_export_context(kwargs["public_only"])
+            events, meta = build_export_context(kwargs["public_only"], user_id=self.user_id)
             events_json = json.dumps(events, ensure_ascii=False, indent=2)
             flag = " --public" if kwargs["public_only"] else ""
             injected = (
@@ -242,7 +249,7 @@ class LivetimeAgent:
                 re.IGNORECASE,
             )
             if data_kw.search(text):
-                stats = _get_summary_stats()
+                stats = _get_summary_stats(user_id=self.user_id)
                 text += f"\n\n[工具上下文] 統計摘要：{json.dumps(stats, ensure_ascii=False)}"
             return self._ask_claude(text, stateful=True)
         return UNKNOWN_HELP
