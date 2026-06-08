@@ -73,8 +73,10 @@ def get_agent(user_id: int) -> LivetimeAgent:
 def startup():
     from seed import SCHEMA_PATH
     conn = get_conn()
-    # Run schema first (CREATE TABLE IF NOT EXISTS — safe to re-run)
+    conn.execute("PRAGMA foreign_keys=OFF")
+    # Run schema (CREATE TABLE IF NOT EXISTS — safe to re-run)
     conn.executescript(SCHEMA_PATH.read_text())
+    conn.execute("PRAGMA foreign_keys=OFF")
     # Create users table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -84,6 +86,21 @@ def startup():
             created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
+    # Seed lookup tables (safe — INSERT OR IGNORE)
+    conn.executemany(
+        "INSERT OR IGNORE INTO event_types(key, label, icon, color) VALUES(?,?,?,?)",
+        [("learn","學習","learn","var(--t-learn)"),
+         ("work","作品","work","var(--t-work)"),
+         ("intern","實習","intern","var(--t-intern)"),
+         ("job","工作","job","var(--t-job)"),
+         ("life","生活","life","var(--t-life)")],
+    )
+    conn.executemany(
+        "INSERT OR IGNORE INTO momentum_types(key, label, icon, color, soft) VALUES(?,?,?,?,?)",
+        [("up","成就感高","arrowUp","#34e3a8","rgba(52,227,168,.16)"),
+         ("calm","沉澱期","wave","#5ad1ff","rgba(90,209,255,.16)"),
+         ("intense","高壓衝刺","bolt","#ffc861","rgba(255,200,97,.16)")],
+    )
     # Add extra columns if missing
     cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
     for col, defn in [
