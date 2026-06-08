@@ -210,7 +210,7 @@ UNKNOWN_HELP = """目前支援的指令：
 
 
 class LivetimeAgent:
-    def __init__(self, model: str = "claude-opus-4-8", user_id: Optional[int] = None):
+    def __init__(self, model: str = "claude-haiku-4-5-20251001", user_id: Optional[int] = None):
         self.client = anthropic_sdk.Anthropic()
         self.model = model
         self.user_id = user_id

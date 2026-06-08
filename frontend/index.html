@@ -438,7 +438,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         </div>
       </div>
       <div id="add-image-preview" style="display:none;margin-bottom:12px"><img id="add-img-thumb" style="max-height:140px;border-radius:8px;border:1px solid var(--border)"><button class="btn btn-ghost btn-sm" style="margin-left:8px;vertical-align:top" onclick="clearAddImage()">✕ 移除</button></div>
-      <div id="add-ai-suggestion" style="display:none;margin-top:4px;padding:12px 14px;background:rgba(0,255,170,.06);border:1px solid rgba(0,255,170,.2);border-radius:10px;font-size:13px;color:var(--t2);line-height:1.7"></div>
+      <div id="add-ai-suggestion" style="display:none;margin-top:4px;padding:12px 14px;background:rgba(0,255,170,.06);border:1px solid rgba(0,255,170,.2);border-radius:10px;font-size:13px;color:var(--txt-2);line-height:1.7"></div>
     </div>
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-ghost btn-sm" onclick="runAiAssist()" id="add-ai-btn">🤖 AI 輔助分析</button>
@@ -1237,7 +1237,7 @@ function closeAddModal() {
 
 async function runAiAssist() {
   const title = $("add-title").value.trim();
-  if(!title){ toast("請先輸入事件標題","warn"); return; }
+  if(!title){ toast("請先輸入事件標題","err"); return; }
   const btn = $("add-ai-btn");
   btn.disabled = true; btn.textContent = "🤖 AI 分析中…";
   try {
@@ -1256,7 +1256,7 @@ async function runAiAssist() {
       (res.description ? `<span style="opacity:.8">摘要：${res.description}</span><br>` : "") +
       (res.suggestion ? `<span style="color:var(--a1)">💡 ${res.suggestion}</span>` : "");
   } catch(e) {
-    toast("AI 分析失敗，請稍後再試","error");
+    toast("AI 分析失敗，請稍後再試","err");
   } finally {
     btn.disabled = false; btn.textContent = "🤖 AI 輔助分析";
   }
@@ -1265,8 +1265,8 @@ async function runAiAssist() {
 async function submitAddEvent() {
   const title = $("add-title").value.trim();
   const dateVal = $("add-date").value;
-  if(!title){ toast("請輸入事件標題","warn"); return; }
-  if(!dateVal){ toast("請選擇日期","warn"); return; }
+  if(!title){ toast("請輸入事件標題","err"); return; }
+  if(!dateVal){ toast("請選擇日期","err"); return; }
   const [y,m,d] = dateVal.split("-");
   const date_sort = parseInt(y)*10000 + parseInt(m)*100 + parseInt(d);
   const mn = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
@@ -1292,7 +1292,7 @@ async function submitAddEvent() {
     toast("事件已新增！");
     loadTimeline();
   } catch(e) {
-    toast("新增失敗："+e.message,"warn");
+    toast("新增失敗："+e.message,"err");
   }
 }
 </script>
