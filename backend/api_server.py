@@ -424,57 +424,123 @@ def event_types():
 def dashboard_stats(user: dict = Depends(get_current_user)):
     conn = get_conn()
     uid = user["user_id"]
+    from datetime import date as _date
+    today = _date.today()
+    this_year  = today.year
+    this_month_start = today.year * 10000 + today.month * 100
+    next_month_start = (today.year + today.month // 12) * 10000 + (today.month % 12 + 1) * 100
+    this_year_start  = today.year * 10000 + 100
+    next_year_start  = (today.year + 1) * 10000 + 100
 
-    # Momentum distribution (for doughnut)
+    # All-time total
+    total_all = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE user_id=?", (uid,)
+    ).fetchone()[0]
+
+    # This year total
+    total_year = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE user_id=? AND date_sort>=? AND date_sort<?",
+        (uid, this_year_start, next_year_start)
+    ).fetchone()[0]
+
+    # This month total
+    total_month = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE user_id=? AND date_sort>=? AND date_sort<?",
+        (uid, this_month_start, next_month_start)
+    ).fetchone()[0]
+
+    # Yearly counts (bar chart)
+    yearly_rows = conn.execute(
+        """SELECT date_sort/10000 AS year, COUNT(*) AS count
+           FROM events WHERE user_id=? GROUP BY year ORDER BY year ASC""", (uid,)
+    ).fetchall()
+
+    # Monthly counts per year (bar chart — all months, grouped)
+    monthly_rows = conn.execute(
+        """SELECT date_sort/10000 AS year,
+                  date_sort/100%100 AS month,
+                  COUNT(*) AS count
+           FROM events WHERE user_id=?
+           GROUP BY year, month ORDER BY year ASC, month ASC""", (uid,)
+    ).fetchall()
+
+    # Momentum distribution (doughnut)
     momentum_rows = conn.execute(
-        """SELECT COALESCE(momentum, 'none') AS momentum, COUNT(*) AS count
+        """SELECT COALESCE(momentum,'none') AS momentum, COUNT(*) AS count
            FROM events WHERE user_id=? GROUP BY momentum""", (uid,)
     ).fetchall()
 
-    # Category distribution (for radar)
+    # Category distribution (radar)
     category_rows = conn.execute(
         """SELECT e.type, et.label, COUNT(*) AS count
            FROM events e LEFT JOIN event_types et ON et.key=e.type
            WHERE e.user_id=? GROUP BY e.type""", (uid,)
     ).fetchall()
 
-    # Monthly event count (for line chart) — last 24 months
-    monthly_rows = conn.execute(
-        """SELECT date_sort/10000*100 + (date_sort/100%100) AS yyyymm, COUNT(*) AS count
-           FROM events WHERE user_id=? GROUP BY yyyymm ORDER BY yyyymm ASC LIMIT 24""", (uid,)
-    ).fetchall()
-
-    # This month stats
-    from datetime import date as _date
-    today = _date.today()
-    this_month = today.year * 10000 + today.month * 100
-    next_month = (today.year + (today.month // 12)) * 10000 + (today.month % 12 + 1) * 100
-    this_month_count = conn.execute(
-        "SELECT COUNT(*) FROM events WHERE user_id=? AND date_sort>=? AND date_sort<?",
-        (uid, this_month, next_month)
-    ).fetchone()[0]
-
-    # Most common momentum this month
-    top_momentum = conn.execute(
-        """SELECT COALESCE(momentum,'none') AS m, COUNT(*) n FROM events
-           WHERE user_id=? AND date_sort>=? AND date_sort<? GROUP BY m ORDER BY n DESC LIMIT 1""",
-        (uid, this_month, next_month)
-    ).fetchone()
-
-    # Active days (days with at least 1 event)
-    active_days = conn.execute(
-        "SELECT COUNT(DISTINCT date_sort) FROM events WHERE user_id=?", (uid,)
-    ).fetchone()[0]
-
     conn.close()
     return {
+        "total_all": total_all,
+        "total_year": total_year,
+        "total_month": total_month,
+        "this_year": this_year,
+        "this_month": today.month,
+        "yearly_counts": [dict(r) for r in yearly_rows],
+        "monthly_counts": [dict(r) for r in monthly_rows],
         "momentum_dist": [dict(r) for r in momentum_rows],
         "category_dist": [dict(r) for r in category_rows],
-        "monthly_counts": [dict(r) for r in monthly_rows],
-        "this_month_count": this_month_count,
-        "top_momentum": top_momentum["m"] if top_momentum else None,
-        "active_days": active_days,
     }
+
+
+# ── Career report ─────────────────────────────────────────────────────────────
+@app.post("/api/career-report")
+def career_report(user: dict = Depends(get_current_user)):
+    _check_api_key()
+    import anthropic as _anthropic, json as _json
+    uid = user["user_id"]
+    events = _fetch_events(limit=200, user_id=uid)["events"]
+    if not events:
+        raise HTTPException(400, "尚無事件資料，請先新增人生事件")
+    events_summary = [
+        {"title": e["title"], "date": e["date_label"], "type": e.get("type_label", e["type"]),
+         "momentum": e.get("momentum_label") or e.get("momentum") or "未標記",
+         "description": e.get("description") or "", "tags": e.get("tags", [])}
+        for e in events
+    ]
+    prompt = f"""以下是使用者完整的人生事件紀錄（共 {len(events)} 筆）：
+
+```json
+{_json.dumps(events_summary, ensure_ascii=False, indent=2)}
+```
+
+請以一位富有洞察力的生涯顧問與心理師身份，針對這位使用者的完整人生歷程，撰寫一份宏觀的【心理韌性、核心成就與未來生活建議】總分析報告。
+
+報告格式（用繁體中文，Markdown 格式）：
+
+## 🌟 人生歷程總覽
+（2-3句話概括整體軌跡）
+
+## 💪 心理韌性分析
+（從情緒起伏和高壓事件分析韌性特質）
+
+## 🏆 核心成就亮點
+（列出 3-5 項最具代表性的成就或里程碑）
+
+## 🔍 成長模式洞察
+（發現潛在的成長規律或行為模式）
+
+## 🚀 未來生涯建議
+（給出 3 項具體、有根據的未來方向建議）
+
+## 💌 給自己的一句話
+（一句溫暖有力的人生金句）"""
+
+    client = _anthropic.Anthropic()
+    resp = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1500,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return {"report": resp.content[0].text}
 
 
 # ── Health check (no auth needed) ────────────────────────────────────────────
