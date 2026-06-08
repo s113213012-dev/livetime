@@ -130,10 +130,6 @@ def register(req: RegisterRequest):
         (req.username.strip(), hashed),
     )
     user_id = cur.lastrowid
-    # First user adopts all existing seed events (user_id IS NULL)
-    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    if user_count == 1:
-        conn.execute("UPDATE events SET user_id=? WHERE user_id IS NULL", (user_id,))
     conn.commit()
     conn.close()
     token = _create_token(user_id, req.username.strip())
