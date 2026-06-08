@@ -213,6 +213,42 @@ def search(q: str, limit: int = 20, user: dict = Depends(get_current_user)):
     return [dict(r) for r in rows]
 
 
+# ── Event create ─────────────────────────────────────────────────────────────
+class EventCreate(BaseModel):
+    title: str
+    date_label: str
+    date_sort: int
+    type: str = "learn"
+    momentum: Optional[str] = None
+    description: Optional[str] = None
+    link: Optional[str] = None
+    tags: Optional[List[str]] = []
+
+
+@app.post("/api/events")
+def create_event(req: EventCreate, user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    eid = f"ev_{uuid.uuid4().hex[:10]}"
+    conn.execute(
+        """INSERT INTO events
+           (id, title, date_label, date_sort, type, momentum, description, has_media, link, user_id)
+           VALUES(?,?,?,?,?,?,?,0,?,?)""",
+        (eid, req.title.strip(), req.date_label, req.date_sort,
+         req.type, req.momentum or None, req.description or None,
+         req.link or None, user["user_id"]),
+    )
+    for tag_name in (req.tags or []):
+        tag_name = tag_name.strip()
+        if not tag_name:
+            continue
+        conn.execute("INSERT OR IGNORE INTO tags(name) VALUES(?)", (tag_name,))
+        tag_id = conn.execute("SELECT id FROM tags WHERE name=?", (tag_name,)).fetchone()[0]
+        conn.execute("INSERT OR IGNORE INTO event_tags(event_id,tag_id) VALUES(?,?)", (eid, tag_id))
+    conn.commit()
+    conn.close()
+    return get_event(eid, user)
+
+
 # ── Event update ──────────────────────────────────────────────────────────────
 class EventUpdate(BaseModel):
     title: Optional[str] = None
@@ -394,6 +430,41 @@ def _check_api_key():
             status_code=503,
             detail="ANTHROPIC_API_KEY not set — AI features unavailable",
         )
+
+
+class AiAssistRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+
+@app.post("/api/ai-assist")
+def ai_assist(req: AiAssistRequest, user: dict = Depends(get_current_user)):
+    _check_api_key()
+    import anthropic as _anthropic
+    client = _anthropic.Anthropic()
+    prompt = f"""使用者正在記錄一筆人生事件，請根據以下資訊，用 JSON 格式回覆（不要加 markdown 或說明文字，只輸出純 JSON）：
+
+標題：{req.title}
+描述：{req.description or "（無）"}
+
+請輸出以下欄位：
+{{
+  "type": "learn|work|intern|job|life 其中一個",
+  "momentum": "up|calm|intense 其中一個，或空字串",
+  "tags": ["最多5個技能或關鍵字標籤"],
+  "description": "50~100字的中文事件摘要，說明這件事的內容與意義",
+  "suggestion": "一句話的成長建議或反思"
+}}"""
+    try:
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        import json as _json
+        return _json.loads(resp.content[0].text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI 分析失敗：{str(e)}")
 
 
 @app.post("/api/analyze")

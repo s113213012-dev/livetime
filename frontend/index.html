@@ -332,6 +332,67 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
   </div>
 </div>
 
+<!-- Add Event Modal -->
+<div id="add-modal" class="modal-overlay" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">✚ 新增人生事件</div>
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="modal-label">標題 *</div>
+        <input id="add-title" class="modal-input-sm" type="text" placeholder="例：完成第一個 React 專案">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div>
+          <div class="modal-label">日期 *</div>
+          <input id="add-date" class="modal-input-sm" type="month" placeholder="YYYY-MM">
+        </div>
+        <div>
+          <div class="modal-label">分類</div>
+          <select id="add-type" class="modal-input-sm" style="width:100%">
+            <option value="learn">🎓 學習</option>
+            <option value="work">💼 作品</option>
+            <option value="intern">🏢 實習</option>
+            <option value="job">👑 工作</option>
+            <option value="life">🌿 生活</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">情緒動能</div>
+        <select id="add-momentum" class="modal-input-sm" style="width:100%">
+          <option value="">— 無 —</option>
+          <option value="up">⬆️ 成就感高</option>
+          <option value="calm">🌊 沉澱期</option>
+          <option value="intense">⚡ 高壓衝刺</option>
+        </select>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">詳細描述</div>
+        <textarea id="add-desc" class="modal-input" placeholder="描述這件事的經過、學到什麼、有什麼感受…"></textarea>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">技能標籤（逗號分隔）</div>
+        <input id="add-tags" class="modal-input-sm" type="text" placeholder="Python, Figma, 簡報設計">
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">相關連結</div>
+        <input id="add-link" class="modal-input-sm" type="text" placeholder="https://github.com/...">
+      </div>
+      <div id="add-ai-suggestion" style="display:none;margin-top:12px;padding:12px 14px;background:rgba(0,255,170,.06);border:1px solid rgba(0,255,170,.2);border-radius:10px;font-size:13px;color:var(--t2);line-height:1.7"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost btn-sm" onclick="runAiAssist()" id="add-ai-btn">🤖 AI 輔助分析</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="closeAddModal()">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="submitAddEvent()">✚ 新增事件</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Detail Modal -->
 <div id="detail-modal" class="modal-overlay" onclick="handleModalOverlayClick(event)">
   <div class="modal">
@@ -459,6 +520,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
         <span class="count-badge" id="event-count"></span>
       </div>
       <div class="action-bar">
+        <button class="btn btn-primary" onclick="openAddModal()">✚ 新增事件</button>
         <button class="btn btn-ghost" onclick="backupTimeline()">⬇️ 備份時光軸</button>
         <label class="btn btn-ghost" style="cursor:pointer">
           ⬆️ 匯入備份
@@ -895,8 +957,91 @@ if (getToken()) {
   showAuthPage();
 }
 
-document.addEventListener("keydown", e => { if(e.key==="Escape") closeModal(); });
+document.addEventListener("keydown", e => {
+  if(e.key==="Escape"){ closeModal(); closeAddModal(); }
+});
 window.setApiUrl = url => { localStorage.setItem("livetime_api",url); location.reload(); };
+
+// ── Add Event ─────────────────────────────────────────────────────────────────
+function openAddModal() {
+  $("add-title").value = "";
+  const today = new Date();
+  $("add-date").value = today.toISOString().slice(0,7);
+  $("add-type").value = "learn";
+  $("add-momentum").value = "";
+  $("add-desc").value = "";
+  $("add-tags").value = "";
+  $("add-link").value = "";
+  $("add-ai-suggestion").style.display = "none";
+  $("add-modal").classList.add("open");
+  document.body.style.overflow = "hidden";
+  setTimeout(()=>$("add-title").focus(), 100);
+}
+
+function closeAddModal() {
+  $("add-modal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+async function runAiAssist() {
+  const title = $("add-title").value.trim();
+  if(!title){ showToast("請先輸入事件標題","warn"); return; }
+  const btn = $("add-ai-btn");
+  btn.disabled = true; btn.textContent = "🤖 AI 分析中…";
+  try {
+    const res = await apiFetch("/api/ai-assist", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ title, description: $("add-desc").value.trim() })
+    });
+    if(res.type) $("add-type").value = res.type;
+    if(res.momentum) $("add-momentum").value = res.momentum;
+    if(res.tags && res.tags.length) $("add-tags").value = res.tags.join(", ");
+    if(res.description && !$("add-desc").value.trim()) $("add-desc").value = res.description;
+    const box = $("add-ai-suggestion");
+    box.style.display = "block";
+    box.innerHTML = `<strong>🤖 AI 分析結果</strong><br>` +
+      (res.description ? `<span style="opacity:.8">摘要：${res.description}</span><br>` : "") +
+      (res.suggestion ? `<span style="color:var(--a1)">💡 ${res.suggestion}</span>` : "");
+  } catch(e) {
+    showToast("AI 分析失敗，請稍後再試","error");
+  } finally {
+    btn.disabled = false; btn.textContent = "🤖 AI 輔助分析";
+  }
+}
+
+async function submitAddEvent() {
+  const title = $("add-title").value.trim();
+  const dateVal = $("add-date").value;
+  if(!title){ showToast("請輸入事件標題","warn"); return; }
+  if(!dateVal){ showToast("請選擇日期","warn"); return; }
+  const [y,m] = dateVal.split("-");
+  const date_sort = parseInt(y)*100 + parseInt(m);
+  const monthNames = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const date_label = `${y} 年 ${monthNames[parseInt(m)]}`;
+  const tags = $("add-tags").value.split(",").map(t=>t.trim()).filter(Boolean);
+  try {
+    await apiFetch("/api/events", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        title,
+        date_label,
+        date_sort,
+        type: $("add-type").value,
+        momentum: $("add-momentum").value || null,
+        description: $("add-desc").value.trim() || null,
+        link: $("add-link").value.trim() || null,
+        tags,
+      })
+    });
+    closeAddModal();
+    showToast("事件已新增！","success");
+    loadTimeline();
+  } catch(e) {
+    showToast("新增失敗："+e.message,"error");
+  }
+}
 </script>
 </body>
 </html>
