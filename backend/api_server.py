@@ -1,19 +1,14 @@
 """
-api_server.py — Livetime REST API
-===================================
-Thin HTTP wrapper around the SQLite helpers.
-
-    python api_server.py            # default :8080
-    python api_server.py --port 3001
-
-CORS is open so GitHub Pages (or any origin) can reach a local/ngrok server.
+api_server.py — Livetime REST API v2
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
+import uuid
 
-# Load ANTHROPIC_API_KEY from .env if not already set in the environment
+# Load API keys from .env
 _env_file = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(_env_file):
     with open(_env_file) as _f:
@@ -22,8 +17,9 @@ if os.path.exists(_env_file):
             if _line and not _line.startswith("#") and "=" in _line:
                 _k, _v = _line.split("=", 1)
                 os.environ.setdefault(_k.strip(), _v.strip())
+
 from pathlib import Path
-from typing import Optional
+from typing import Any, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -37,12 +33,12 @@ from agent import (
 )
 from seed import get_conn
 
-app = FastAPI(title="Livetime API", version="1.0.0")
+app = FastAPI(title="Livetime API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -54,6 +50,8 @@ def get_agent() -> LivetimeAgent:
         _agent = LivetimeAgent()
     return _agent
 
+
+# ── Read ──────────────────────────────────────────────────────────────────────
 
 @app.get("/api/events")
 def list_events(
@@ -163,6 +161,129 @@ def event_types():
     return [dict(r) for r in rows]
 
 
+# ── Update ────────────────────────────────────────────────────────────────────
+
+class EventUpdate(BaseModel):
+    title: Optional[str] = None
+    date_label: Optional[str] = None
+    date_sort: Optional[int] = None
+    type: Optional[str] = None
+    momentum: Optional[str] = None
+    description: Optional[str] = None
+    link: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+@app.put("/api/events/{event_id}")
+def update_event(event_id: str, req: EventUpdate):
+    conn = get_conn()
+    row = conn.execute("SELECT id FROM events WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Event '{event_id}' not found")
+
+    fields, params = [], []
+    for attr, col in [
+        ("title", "title"), ("date_label", "date_label"),
+        ("date_sort", "date_sort"), ("type", "type"),
+        ("momentum", "momentum"), ("description", "description"),
+        ("link", "link"),
+    ]:
+        val = getattr(req, attr)
+        if val is not None:
+            fields.append(f"{col}=?")
+            params.append(val)
+
+    if fields:
+        fields.append("updated_at=datetime('now')")
+        params.append(event_id)
+        conn.execute(f"UPDATE events SET {', '.join(fields)} WHERE id=?", params)
+
+    if req.tags is not None:
+        conn.execute("DELETE FROM event_tags WHERE event_id=?", (event_id,))
+        for tag_name in req.tags:
+            conn.execute("INSERT OR IGNORE INTO tags(name) VALUES(?)", (tag_name,))
+            tag_id = conn.execute(
+                "SELECT id FROM tags WHERE name=?", (tag_name,)
+            ).fetchone()[0]
+            conn.execute(
+                "INSERT OR IGNORE INTO event_tags(event_id,tag_id) VALUES(?,?)",
+                (event_id, tag_id),
+            )
+
+    conn.commit()
+    conn.close()
+    return get_event(event_id)
+
+
+# ── Delete ────────────────────────────────────────────────────────────────────
+
+@app.delete("/api/events/{event_id}")
+def delete_event(event_id: str):
+    conn = get_conn()
+    row = conn.execute("SELECT id FROM events WHERE id=?", (event_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Event '{event_id}' not found")
+    conn.execute("DELETE FROM event_tags WHERE event_id=?", (event_id,))
+    conn.execute("DELETE FROM events WHERE id=?", (event_id,))
+    conn.commit()
+    conn.close()
+    return {"deleted": event_id}
+
+
+# ── Backup / Import ───────────────────────────────────────────────────────────
+
+@app.get("/api/backup")
+def backup_events():
+    data = _fetch_events(limit=200)
+    return data["events"]
+
+
+class ImportRequest(BaseModel):
+    events: List[Any]
+
+
+@app.post("/api/import")
+def import_events(req: ImportRequest):
+    conn = get_conn()
+    imported = 0
+    for ev in req.events:
+        eid = ev.get("id") or f"imp_{uuid.uuid4().hex[:8]}"
+        conn.execute(
+            """INSERT OR REPLACE INTO events
+               (id, title, date_label, date_sort, type, momentum, description, has_media, link)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            (
+                eid,
+                ev.get("title", "無標題"),
+                ev.get("date_label", ""),
+                int(ev.get("date_sort", 0)),
+                ev.get("type", "learn"),
+                ev.get("momentum") or None,
+                ev.get("description") or None,
+                1 if ev.get("has_media") else 0,
+                ev.get("link") or None,
+            ),
+        )
+        conn.execute("DELETE FROM event_tags WHERE event_id=?", (eid,))
+        for tag_name in ev.get("tags", []):
+            conn.execute("INSERT OR IGNORE INTO tags(name) VALUES(?)", (tag_name,))
+            tag_id = conn.execute(
+                "SELECT id FROM tags WHERE name=?", (tag_name,)
+            ).fetchone()[0]
+            conn.execute(
+                "INSERT OR IGNORE INTO event_tags(event_id,tag_id) VALUES(?,?)",
+                (eid, tag_id),
+            )
+        imported += 1
+    conn.commit()
+    conn.close()
+    return {"imported": imported}
+
+
+# ── AI ────────────────────────────────────────────────────────────────────────
+
 class ExportRequest(BaseModel):
     public_only: bool = False
 
@@ -184,8 +305,9 @@ def analyze():
     try:
         report = get_agent().chat("/analyze")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini API 錯誤：{str(e)}")
+        raise HTTPException(status_code=502, detail=f"AI API 錯誤：{str(e)}")
     return {"report": report}
+
 
 @app.post("/api/export")
 def export_events(req: ExportRequest):
