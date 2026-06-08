@@ -82,7 +82,7 @@ def startup():
     """)
     cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
     for col, defn in [
-        ("user_id",    "INTEGER REFERENCES users(id)"),
+        ("user_id",    "INTEGER"),
         ("importance", "INTEGER"),
         ("reflection", "TEXT"),
         ("image_data", "TEXT"),
