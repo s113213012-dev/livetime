@@ -260,11 +260,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 /* ── Print ── */
 @media print{
   body{background:#fff!important;color:#111!important}
-  #auth-page,#app .shell{display:none!important}
-  #print-report{display:block!important;padding:24px;font-family:sans-serif}
-  #print-report h1{color:#111;font-size:20px;margin-bottom:16px}
-  #print-report .report-content{color:#333;line-height:1.8;font-size:14px;white-space:pre-wrap}
-  #print-timeline{display:block!important;padding:24px 32px;font-family:"Helvetica Neue",Arial,sans-serif;max-width:860px;margin:0 auto}
+  #auth-page,#app .shell,#toast-root{display:none!important}
+  body[data-print="report"] #print-report{display:block!important;padding:24px;font-family:sans-serif}
+  body[data-print="report"] #print-report h1{color:#111;font-size:20px;margin-bottom:16px}
+  body[data-print="report"] #print-report .report-content{color:#333;line-height:1.8;font-size:14px;white-space:pre-wrap}
+  body[data-print="timeline"] #print-timeline{display:block!important;padding:24px 32px;font-family:"Helvetica Neue",Arial,sans-serif;max-width:860px;margin:0 auto}
   #print-timeline .pt-cover{text-align:center;padding:32px 0 24px;border-bottom:2px solid #222;margin-bottom:28px}
   #print-timeline .pt-cover h1{font-size:26px;font-weight:800;color:#111;margin-bottom:6px}
   #print-timeline .pt-cover .pt-meta{font-size:13px;color:#666}
@@ -871,7 +871,6 @@ let _t; function debounceSearch(){ clearTimeout(_t); _t=setTimeout(applyFilters,
 
 // ── PDF Export ────────────────────────────────────────────────────────────────
 async function exportTimelinePDF() {
-  toast("準備匯出，請稍候…");
   try {
     // Fetch full event details (includes reflection, image_data, importance)
     const events = await apiFetch("/api/events-full");
@@ -895,9 +894,15 @@ async function exportTimelinePDF() {
     let dashStats = null;
     try { dashStats = await apiFetch("/api/dashboard/stats"); } catch(e){}
 
-    // Capture AI career report text (if already generated)
+    // Get AI career report — use existing if available, otherwise auto-generate
     const careerBox = $("career-report-box");
-    const careerText = (careerBox && careerBox.textContent.trim()) ? careerBox.textContent.trim() : null;
+    let careerText = (careerBox && careerBox.textContent.trim()) ? careerBox.textContent.trim() : null;
+    if(!careerText){
+      try {
+        const cr = await apiFetch("/api/career-report",{method:"POST"});
+        careerText = cr.report || null;
+      } catch(e){ careerText = null; }
+    }
 
     // ── Build sections ────────────────────────────────────────────
     // Cover
@@ -955,7 +960,9 @@ async function exportTimelinePDF() {
 
     $("print-report-content").textContent = "";
     $("print-timeline").innerHTML = coverHtml + kpiHtml + chartsHtml + aiHtml + eventsHtml;
+    document.body.dataset.print = "timeline";
     window.print();
+    delete document.body.dataset.print;
   } catch(e){ toast("匯出失敗："+e.message,"err"); }
 }
 
@@ -1221,8 +1228,10 @@ async function runAnalyze() {
 
 function exportReportPDF(reportText){
   $("print-report-content").textContent=reportText;
-  $("print-timeline").innerHTML=""; // 確保不重疊
+  $("print-timeline").innerHTML="";
+  document.body.dataset.print="report";
   window.print();
+  delete document.body.dataset.print;
 }
 
 function appendMsg(role,html) {
