@@ -342,7 +342,7 @@ def backup_events(user: dict = Depends(get_current_user)):
     return data["events"]
 
 
-@app.get("/api/events/full")
+@app.get("/api/events-full")
 def events_full(user: dict = Depends(get_current_user)):
     """Return all events with every column (for PDF export)."""
     conn = get_conn()

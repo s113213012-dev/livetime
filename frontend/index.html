@@ -874,7 +874,7 @@ async function exportTimelinePDF() {
   toast("準備匯出，請稍候…");
   try {
     // Fetch full event details (includes reflection, image_data, importance)
-    const events = await apiFetch("/api/events/full");
+    const events = await apiFetch("/api/events-full");
     const username = getUsername() || "我";
     const now = new Date().toLocaleDateString("zh-TW");
     const TYPE_LABEL={learn:"學習",work:"作品",intern:"實習",job:"工作",life:"生活"};
