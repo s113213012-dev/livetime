@@ -71,7 +71,11 @@ def get_agent(user_id: int) -> LivetimeAgent:
 # ── DB Migration ──────────────────────────────────────────────────────────────
 @app.on_event("startup")
 def startup():
+    from seed import SCHEMA_PATH
     conn = get_conn()
+    # Run schema first (CREATE TABLE IF NOT EXISTS — safe to re-run)
+    conn.executescript(SCHEMA_PATH.read_text())
+    # Create users table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +84,7 @@ def startup():
             created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
+    # Add extra columns if missing
     cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
     for col, defn in [
         ("user_id",    "INTEGER"),
