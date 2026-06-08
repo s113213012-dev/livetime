@@ -497,7 +497,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--a1);box-shadow:0 0 0 
 </div><!-- #app -->
 
 <script>
-const API = (localStorage.getItem("livetime_api") || "http://127.0.0.1:8080").replace(/\/$/, "");
+const API = (localStorage.getItem("livetime_api") || (location.hostname === "127.0.0.1" || location.hostname === "localhost" ? "http://127.0.0.1:8080" : location.origin)).replace(/\/$/, "");
 const $ = id => document.getElementById(id);
 
 // ── Auth state ────────────────────────────────────────────────────────────────

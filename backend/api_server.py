@@ -25,6 +25,8 @@ import jwt
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
@@ -362,6 +364,16 @@ def event_types():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+# ── Frontend static files ─────────────────────────────────────────────────────
+_frontend_dir = Path(__file__).parent.parent / "frontend"
+if _frontend_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_frontend_dir)), name="static")
+
+    @app.get("/", response_class=FileResponse)
+    def serve_index():
+        return str(_frontend_dir / "index.html")
 
 
 # ── AI ────────────────────────────────────────────────────────────────────────
