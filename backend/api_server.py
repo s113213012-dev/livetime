@@ -419,6 +419,64 @@ def event_types():
     return [dict(r) for r in rows]
 
 
+# ── Dashboard stats ───────────────────────────────────────────────────────────
+@app.get("/api/dashboard/stats")
+def dashboard_stats(user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    uid = user["user_id"]
+
+    # Momentum distribution (for doughnut)
+    momentum_rows = conn.execute(
+        """SELECT COALESCE(momentum, 'none') AS momentum, COUNT(*) AS count
+           FROM events WHERE user_id=? GROUP BY momentum""", (uid,)
+    ).fetchall()
+
+    # Category distribution (for radar)
+    category_rows = conn.execute(
+        """SELECT e.type, et.label, COUNT(*) AS count
+           FROM events e LEFT JOIN event_types et ON et.key=e.type
+           WHERE e.user_id=? GROUP BY e.type""", (uid,)
+    ).fetchall()
+
+    # Monthly event count (for line chart) — last 24 months
+    monthly_rows = conn.execute(
+        """SELECT date_sort/10000*100 + (date_sort/100%100) AS yyyymm, COUNT(*) AS count
+           FROM events WHERE user_id=? GROUP BY yyyymm ORDER BY yyyymm ASC LIMIT 24""", (uid,)
+    ).fetchall()
+
+    # This month stats
+    from datetime import date as _date
+    today = _date.today()
+    this_month = today.year * 10000 + today.month * 100
+    next_month = (today.year + (today.month // 12)) * 10000 + (today.month % 12 + 1) * 100
+    this_month_count = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE user_id=? AND date_sort>=? AND date_sort<?",
+        (uid, this_month, next_month)
+    ).fetchone()[0]
+
+    # Most common momentum this month
+    top_momentum = conn.execute(
+        """SELECT COALESCE(momentum,'none') AS m, COUNT(*) n FROM events
+           WHERE user_id=? AND date_sort>=? AND date_sort<? GROUP BY m ORDER BY n DESC LIMIT 1""",
+        (uid, this_month, next_month)
+    ).fetchone()
+
+    # Active days (days with at least 1 event)
+    active_days = conn.execute(
+        "SELECT COUNT(DISTINCT date_sort) FROM events WHERE user_id=?", (uid,)
+    ).fetchone()[0]
+
+    conn.close()
+    return {
+        "momentum_dist": [dict(r) for r in momentum_rows],
+        "category_dist": [dict(r) for r in category_rows],
+        "monthly_counts": [dict(r) for r in monthly_rows],
+        "this_month_count": this_month_count,
+        "top_momentum": top_momentum["m"] if top_momentum else None,
+        "active_days": active_days,
+    }
+
+
 # ── Health check (no auth needed) ────────────────────────────────────────────
 @app.get("/api/health")
 def health():
